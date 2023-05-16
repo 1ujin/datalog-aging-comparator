@@ -19,9 +19,12 @@ def exportExcel(table, filename):
         max_col = table.columnCount()
 
         # 测试值
-        for col in range(1, max_col):
-            max_length = 0
-            for row in range(2, max_row):
+        for col in range(0, max_col):
+            col_letter = ws.cell(1, col + 1).column_letter
+            max_length = ws.column_dimensions[col_letter].width
+            it = iter(range(2, max_row))
+            for row in it:
+                span = table.rowSpan(row, col)
                 item = table.item(row, col)
                 if not item:
                     continue
@@ -29,7 +32,9 @@ def exportExcel(table, filename):
                 text = item.text().strip()
                 if text[0] == '-':
                     text = text[1:]
-                if text.find('.') > -1:
+                if span > 1:
+                    cell.value = item.text().strip()
+                elif text.find('.') > -1:
                     integer, decimal = text.split('.')
                     if integer.isdigit() and decimal.isdigit():
                         cell.value = float(item.text().strip())
@@ -39,27 +44,33 @@ def exportExcel(table, filename):
                     cell.value = int(item.text().strip())
                 else:
                     cell.value = item.text().strip()
-                cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='center')
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
+                max_length = max(max_length, len(str(cell.value)))
+                if span > 1:
+                    ws.merge_cells(start_row = row + 1, start_column = col + 1, end_row = row + span, end_column = 1)
+                    cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='top')
+                    for i in range(span - 1):
+                        next(it)
+                else:
+                    cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='center')
             adjusted_width = (max_length + 2) * 1.2
-            col_letter = [x[0].column_letter for x in ws.columns][col]
-            ws.column_dimensions[col_letter].width = adjusted_width
+            if adjusted_width > max_length:
+                # col_letter = [x[0].column_letter for x in ws.columns][col]
+                ws.column_dimensions[col_letter].width = adjusted_width
 
-        # 芯片ID
-        it = iter(range(max_row))
-        for row in it:
-            span = table.rowSpan(row, 0)
-            item = table.item(row, 0)
-            if not item:
-                continue
-            cell = ws.cell(row + 1, 1)
-            cell.value = item.text()
-            cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='top')
-            ws.merge_cells(start_row = row + 1, start_column = 1, end_row = row + span, end_column = 1)
-            if span > 1:
-                for i in range(span - 1):
-                    next(it)
+        # # 芯片ID
+        # it = iter(range(max_row))
+        # for row in it:
+        #     span = table.rowSpan(row, 0)
+        #     item = table.item(row, 0)
+        #     if not item:
+        #         continue
+        #     cell = ws.cell(row + 1, 1)
+        #     cell.value = item.text()
+        #     cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='top')
+        #     ws.merge_cells(start_row = row + 1, start_column = 1, end_row = row + span, end_column = 1)
+        #     if span > 1:
+        #         for i in range(span - 1):
+        #             next(it)
 
         # 表头
         for row in range(2):
