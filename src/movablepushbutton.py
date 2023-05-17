@@ -48,11 +48,12 @@ class MovablePushButton(QPushButton):
         super(MovablePushButton, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-        # if self.__mousePressPos is not None:
-        #     moved = event.globalPos() - self.__mousePressPos 
-        #     if moved.manhattanLength() > 3:
-        #         event.ignore()
-        #         return
+        if self.__mousePressPos is not None:
+            moved = event.globalPos() - self.__mousePressPos 
+            if moved.manhattanLength() > 3:
+                event.ignore()
+                self.setDown(False)
+                return
 
         super(MovablePushButton, self).mouseReleaseEvent(event)
 
