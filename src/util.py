@@ -46,7 +46,7 @@ def exportExcel(table, filename):
                     cell.value = item.text().strip()
                 max_length = max(max_length, len(str(cell.value)))
                 if span > 1:
-                    ws.merge_cells(start_row = row + 1, start_column = col + 1, end_row = row + span, end_column = 1)
+                    ws.merge_cells(start_row = row + 1, start_column = col + 1, end_row = row + span, end_column = col + 1)
                     cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='top')
                     for i in range(span - 1):
                         next(it)
