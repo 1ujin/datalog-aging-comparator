@@ -178,7 +178,7 @@ class FileListBox(QWidget):
                 for name in files:
                     path_set.add(os.path.join(root, name).replace('\\', '/'))
         path_list = list(path_set)
-        path_list.sort()
+        path_list.sort(key=lambda x: os.path.basename(x) + os.path.dirname(x))
         self.file_list.clear()
         for path in path_list:
             if os.path.splitext(path)[1].lower() == '.txt':
