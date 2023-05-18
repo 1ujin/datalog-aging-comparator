@@ -20,6 +20,8 @@ from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize
 import resource
 import util
 
+MIN_SIZE = -sys.maxsize - 1
+
 class FileListBox(QWidget):
     """docstring for FileListBox"""
     
@@ -248,14 +250,18 @@ class FileListBox(QWidget):
 
         compare_dict = OrderedDict()
         pin_map = self.parent.getCheckedPinMap()
+        for testname in pin_map.keys():
+            compare_dict[testname] = dict()
         regex = self.parent.getRegex()
         begin_regex = self.parent.getBeginRegex()
         for path_item in path_dict.items():
             chip_id = path_item[0]
-            compare_dict[chip_id] = dict()
-            chip_dict = compare_dict.get(chip_id)
-            
+
+            # 老炼前
             before_path = path_item[1].get('before_aging')
+            if not before_path:
+                continue
+            # 读取文件
             with open(before_path, 'r') as f:
                 line = f.readline()
                 while line != None and len(line) > 0:
@@ -269,12 +275,19 @@ class FileListBox(QWidget):
                         group = matcher.groups()
                         testname = group[3].strip()
                         pinname = group[4].strip()
+                        # 匹配测试项
                         testname_dict = pin_map.get(testname)
-                        if testname_dict != None:
+                        compare_testname_dict = compare_dict.get(testname)
+                        if testname_dict != None and compare_testname_dict != None:
+                            if compare_testname_dict.get(chip_id) == None:
+                                compare_testname_dict[chip_id] = dict()
+                            compare_chip_dict = compare_testname_dict.get(chip_id)
+                            # 匹配Pin
                             pinname_dict = testname_dict.get(pinname)
                             if pinname_dict != None:
-                                if chip_dict.get(testname) == None:
-                                    chip_dict[testname] = dict()
+                                if compare_chip_dict.get(pinname) == None:
+                                    compare_chip_dict[pinname] = OrderedDict()
+                                compare_pin_dict = compare_chip_dict.get(pinname)
                                 val = group[7].strip()
                                 if val.find('n') > -1:
                                     val = Decimal(val.split(' ')[0])
@@ -284,16 +297,19 @@ class FileListBox(QWidget):
                                     val = Decimal(val.split(' ')[0]) * 1000 * 1000
                                 else:
                                     val = Decimal(val.split(' ')[0]) * 1000 * 1000 * 1000
-                                if chip_dict.get(testname).get(pinname) == None:
-                                    chip_dict.get(testname)[pinname] = dict()
-                                chip_dict.get(testname).get(pinname)[-sys.maxsize - 1] = val
-                                pinname_dict[-sys.maxsize - 1] = True
+                                compare_pin_dict[MIN_SIZE] = val
+                                pinname_dict[MIN_SIZE] = True
                     line = f.readline()
             
+            # 老炼后
             after_item = path_item[1].get('after_aging')
+            if not after_item:
+                continue
             for temperature_item in after_item.items():
-                after_temp_path = temperature_item[1]
-                with open(after_temp_path, 'r') as f:
+                # 循环温度
+                after_temperature, after_temperature_path = temperature_item
+                # 读取文件
+                with open(after_temperature_path, 'r') as f:
                     line = f.readline()
                     while line != None and len(line) > 0:
                         if re.match(begin_regex, line):
@@ -306,12 +322,21 @@ class FileListBox(QWidget):
                             group = matcher.groups()
                             testname = group[3].strip()
                             pinname = group[4].strip()
+                            # 匹配测试项
                             testname_dict = pin_map.get(testname)
-                            if testname_dict != None:
+                            if not compare_dict.get(testname):
+                                compare_dict[testname] = OrderedDict()
+                            compare_testname_dict = compare_dict.get(testname)
+                            if testname_dict != None and compare_testname_dict != None:
+                                if compare_testname_dict.get(chip_id) == None:
+                                    compare_testname_dict[chip_id] = dict()
+                                compare_chip_dict = compare_testname_dict.get(chip_id)
+                                # 匹配Pin
                                 pinname_dict = testname_dict.get(pinname)
                                 if pinname_dict != None:
-                                    if chip_dict.get(testname) == None:
-                                        chip_dict[testname] = dict()
+                                    if compare_chip_dict.get(pinname) == None:
+                                        compare_chip_dict[pinname] = OrderedDict()
+                                    compare_pin_dict = compare_chip_dict.get(pinname)
                                     val = group[7].strip()
                                     if val.find('n') > -1:
                                         val = Decimal(val.split(' ')[0])
@@ -321,101 +346,131 @@ class FileListBox(QWidget):
                                         val = Decimal(val.split(' ')[0]) * 1000 * 1000
                                     else:
                                         val = Decimal(val.split(' ')[0]) * 1000 * 1000 * 1000
-                                    if chip_dict.get(testname).get(pinname) == None:
-                                        chip_dict.get(testname)[pinname] = dict()
-                                    chip_dict.get(testname).get(pinname)[temperature_item[0]] = val
-                                    pinname_dict[temperature_item[0]] = True
+                                    compare_pin_dict[after_temperature] = val
+                                    pinname_dict[after_temperature] = True
                         line = f.readline()
-        return (compare_dict, pin_map, id_error, temperature_error, duplicate_error)
+        return (compare_dict, pin_map, path_dict, id_error, temperature_error, duplicate_error)
 
     def fillTable(self):
         if len(self.parent.getCheckedPinMap()) == 0:
             QMessageBox.warning(self, "提示", "请勾选至少一个测试项！")
             return
-        
-        compare_dict, pin_map, id_error, temperature_error, duplicate_error = self.extractDataToDict()
 
-        self.table.clear()
-        self.table.setRowCount(3)
-        self.table.setColumnCount(1)
-        col = 1
-        for testname_item in pin_map.items():
-            temp_set = set()
-            for pin_value in testname_item[1].values():
-                temp_set.update(pin_value.keys())
-            temp_list = list(temp_set)
-            temp_list.sort()
-            for i in range(len(temp_set) * 3 - 1):
-                self.table.insertColumn(self.table.columnCount())
-            current_w = 0
-            self.table.setSpan(0, col + current_w, 1, len(temp_set) * 3 - 1)
-            self.table.setItem(0, col + current_w, self.getTableItem(testname_item[0]))
-            current_w += 1
-            self.table.setItem(1, col + current_w, self.getTableItem('老炼前'))
-            self.table.setItem(2, col + current_w, self.getTableItem('常温'))
-            current_w += 1
-            self.table.setSpan(1, col + current_w, 1, (len(temp_set) - 1) * 3)
-            self.table.setItem(1, col + current_w, self.getTableItem('老炼后'))
-            for temp in temp_list[1:]:
-                self.table.setItem(2, col + current_w, self.getTableItem(temp))
-                current_w += 1
-                self.table.setItem(2, col + current_w, self.getTableItem('变化值'))
-                current_w += 1
-                self.table.setItem(2, col + current_w, self.getTableItem('变化百分比'))
-                current_w += 1
-            col += len(temp_set) * 3 - 1
+        if self.folder_list.count() + self.file_list.count() == 0:
+            QMessageBox.warning(self, "提示", "请选择至少一个文件！")
+            return
         
-        for compare_item in compare_dict.items():
-            row = self.table.rowCount()
-            chip_id, chip_dict = compare_item
-            max_h = 0
-            for testname in pin_map.keys():
-                compare_testname_dict = chip_dict.get(testname)
-                max_h = max(max_h, len(compare_testname_dict))
-            for i in range(max_h):
-                self.table.insertRow(self.table.rowCount())
-            self.table.setSpan(row, 0, max_h, 1)
-            self.table.setItem(row, 0, self.getTableItem(chip_id, Qt.AlignHCenter|Qt.AlignTop))
+        compare_dict, pin_map, path_dict, id_error, temperature_error, duplicate_error = self.extractDataToDict()
+
+        if len(path_dict) == 0:
+            QMessageBox.warning(self, "提示", "请选择至少一个有效的Datalog！")
+            return
+
+        try:
+            self.table.clear()
+            self.table.setRowCount(3)
+            self.table.setColumnCount(0)
             
             col = 0
-            for testname in pin_map.items():
+            for testname_item in pin_map.items():
+                # 循环测试项
+                testname, pin_dict = testname_item
+
+                # 表头
+                temp_set = set()
+                for pin_value in pin_dict.values():
+                    temp_set.update(pin_value.keys())
+                temp_list = list(temp_set)
+                temp_list.sort()
+                for i in range(len(temp_set) * 3):
+                    self.table.insertColumn(self.table.columnCount())
+                current_w = 0
+                self.table.setSpan(0, col + current_w, 1, len(temp_set) * 3)
+                self.table.setItem(0, col + current_w, self.getTableItem(testname))
+                current_w += 2
+                self.table.setItem(1, col + current_w, self.getTableItem('老炼前'))
+                self.table.setItem(2, col + current_w, self.getTableItem('常温'))
+                current_w += 1
+                if len(temp_set) > 1:
+                    self.table.setSpan(1, col + current_w, 1, (len(temp_set) - 1) * 3)
+                    self.table.setItem(1, col + current_w, self.getTableItem('老炼后'))
+                    for temp in temp_list[1:]:
+                        self.table.setItem(2, col + current_w, self.getTableItem(temp))
+                        current_w += 1
+                        self.table.setItem(2, col + current_w, self.getTableItem('变化值'))
+                        current_w += 1
+                        self.table.setItem(2, col + current_w, self.getTableItem('变化百分比'))
+                        current_w += 1
+
+                # 测试结果
+                compare_testname_dict = compare_dict.get(testname)
+                if not compare_testname_dict:
+                    continue
+                row = 3
                 max_w = 0
-                row = self.table.rowCount() - max_h
-                compare_testname_dict = chip_dict.get(testname[0])
-                for pinname in testname[1].items():
-                    current_w = 1
-                    self.table.setItem(row, col + current_w, self.getTableItem(pinname[0]))
-                    compare_pinname_dict = compare_testname_dict.get(pinname[0])
-                    current_w += 1
-                    before_val = compare_pinname_dict.get(-sys.maxsize - 1)
-                    if before_val == before_val.to_integral():
-                        before_val = before_val.to_integral()
-                    else:
-                        before_val = before_val.normalize()
-                    self.table.setItem(row, col + current_w, self.getTableItem(before_val))
-                    for temp in pinname[1].keys():
-                        if temp == -sys.maxsize - 1:
+                for compare_chip_item in compare_testname_dict.items():
+                    # 循环芯片
+                    chip_id, compare_pin_dict = compare_chip_item
+                    current_h = 0
+                    for pin_item in pin_dict.items():
+                        # 循环Pin
+                        current_w = 1
+                        pinname, temperature = pin_item
+                        if row + current_h >= self.table.rowCount():
+                            self.table.insertRow(self.table.rowCount())
+                        self.table.setItem(row + current_h, col + current_w, self.getTableItem(pinname))
+                        current_w += 1
+                        compare_temp_dict = compare_pin_dict.get(pinname)
+                        if not compare_temp_dict:
                             continue
+                        # Pin
+                        if row + current_h >= self.table.rowCount():
+                            self.table.insertRow(self.table.rowCount())
+                        self.table.setItem(row + current_h, col + current_w, self.getTableItem(pinname))
+                        # 老炼前
+                        before_val = compare_temp_dict.get(MIN_SIZE)
+                        self.table.setItem(row + current_h, col + current_w, self.getTableItem(self.convertDecimal(before_val)))
                         current_w += 1
-                        after_val = compare_pinname_dict.get(temp)
-                        if after_val == after_val.to_integral():
-                            after_val = after_val.to_integral()
-                        else:
-                            after_val = after_val.normalize()
-                        self.table.setItem(row, col + current_w, self.getTableItem(after_val))
-                        current_w += 1
-                        self.table.setItem(row, col + current_w, self.getTableItem(after_val - before_val))
-                        current_w += 1
-                        self.table.setItem(row, col + current_w, self.getTableItem((after_val - before_val) * 100 / before_val))
-                    row += 1
-                    max_w = max(max_w, current_w)
+                        for compare_temp_item in compare_temp_dict.items():
+                            # 循环温度
+                            temperature, test_val = compare_temp_item
+                            if temperature != MIN_SIZE:
+                                # 老炼后
+                                self.table.setItem(row + current_h, col + current_w, self.getTableItem(self.convertDecimal(test_val)))
+                                current_w += 1
+                                diff = test_val - before_val
+                                self.table.setItem(row + current_h, col + current_w, self.getTableItem(self.convertDecimal(diff)))
+                                current_w += 1
+                                percent = self.convertDecimal(diff * 100 / before_val).quantize(Decimal("0.00")).normalize()
+                                self.table.setItem(row + current_h, col + current_w, self.getTableItem(str(percent) + '%'))
+                                current_w += 1
+                        max_w = max(max_w, current_w)
+                        current_h += 1
+                    # 芯片编号
+                    self.table.setItem(row, col, self.getTableItem(chip_id, Qt.AlignHCenter|Qt.AlignTop))
+                    self.table.setSpan(row, col, current_h, 1)
+                    row += current_h
                 col += max_w
+        
+        except Exception as e:
+            print(e)
+        
         self.table.show()
 
     def getTableItem(self, text, alignment=Qt.AlignHCenter|Qt.AlignVCenter):
         item = QTableWidgetItem(str(text))
         item.setTextAlignment(alignment)
         return item
+
+
+    def convertDecimal(self, val):
+        if val == 0:
+            return Decimal(0)
+        elif val == val.to_integral():
+            val = val.to_integral()
+        else:
+            val = val.normalize()
+        return val
 
     def open(self, path):
         print(path)
