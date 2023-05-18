@@ -27,6 +27,9 @@ class MovablePushButton(QPushButton):
             currPos = self.mapToGlobal(self.pos())
             globalPos = event.globalPos()
             diff = globalPos - self.__mouseMovePos
+            if diff.manhattanLength() < 20:
+                event.ignore()
+                return
             newPos = self.mapFromGlobal(currPos + diff)
             if self.parent():
                 right = self.parent().geometry().width()
