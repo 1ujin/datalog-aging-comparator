@@ -12,7 +12,7 @@ import ctypes
 import os
 import re
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QPushButton, QLabel, QLineEdit, QHBoxLayout, QVBoxLayout, QMessageBox, QFileDialog, QSizePolicy, QTreeWidget, QTreeWidgetItem, QStyleFactory, QListWidget, QListWidgetItem, QStyledItemDelegate, QGroupBox, QDateEdit, QTimeEdit, QGridLayout, QShortcut, QAbstractItemView, QComboBox, QCheckBox, QTreeWidgetItemIterator, QPlainTextEdit, QStackedLayout, QStackedWidget, QBoxLayout, QToolButton, QSpacerItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QPushButton, QLabel, QLineEdit, QHBoxLayout, QVBoxLayout, QMessageBox, QFileDialog, QSizePolicy, QTreeWidget, QTreeWidgetItem, QStyleFactory, QListWidget, QListWidgetItem, QStyledItemDelegate, QGroupBox, QDateEdit, QTimeEdit, QGridLayout, QShortcut, QAbstractItemView, QComboBox, QCheckBox, QTreeWidgetItemIterator, QPlainTextEdit, QStackedLayout, QStackedWidget, QBoxLayout, QToolButton, QSpacerItem, QSplitter
 from PyQt5.QtGui import QIcon, QFont, QPixmap, QKeySequence, QIntValidator
 from PyQt5.QtCore import Qt, QModelIndex, QSize, QRect, QPropertyAnimation, QSequentialAnimationGroup, pyqtSlot, QMetaObject
 if sys.platform == 'win32':
@@ -68,7 +68,9 @@ class AgingComparator(QMainWindow):
             self.taskbar_button.setWindow(self.windowHandle())
 
     def initUI(self):
-        center = QWidget(self)
+        center = QSplitter(self)
+        center.setChildrenCollapsible(False)
+        center.setStyleSheet('QSplitter { margin: 11px }')
         
         tab = QTabWidget(center)
         self.testname_tree = TestNameTree(tab)
@@ -138,7 +140,8 @@ class AgingComparator(QMainWindow):
         self.visible_animation.setStartValue(True)
         self.visible_animation.setEndValue(False)
 
-        self.right_layout = QGridLayout()
+        right = QWidget(center)
+        self.right_layout = QGridLayout(right)
         self.right_layout.setContentsMargins(0, 0, 0, 0)
         self.right_layout.addWidget(self.file_list_before_aging, 0, 0, 9, 8)
         self.right_layout.addWidget(self.file_list_after_aging, 0, 8, 9, 8)
@@ -161,10 +164,11 @@ class AgingComparator(QMainWindow):
         self.right_layout.addWidget(self.table_layout_widget, 0, 0, 9, 16)
         self.table_layout_widget.hide()
 
-        main_layout = QHBoxLayout(center)
-        main_layout.addWidget(tab, stretch=0)
-        main_layout.addLayout(self.right_layout, stretch=1)
-        
+        center.addWidget(tab)
+        center.setStretchFactor(0, 0)
+        center.addWidget(right)
+        center.setStretchFactor(1, 1)
+
         self.setCentralWidget(center)
 
     def switchCompareButtion(self, count):
