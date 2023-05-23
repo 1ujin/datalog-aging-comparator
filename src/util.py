@@ -7,8 +7,17 @@
 @Desc   : 工具类
 """
 
-import openpyxl
 import pdb
+import openpyxl
+import os
+import re
+import sys
+from collections import OrderedDict
+from decimal import Decimal
+from PyQt5.QtWidgets import QTableWidgetItem
+from PyQt5.QtCore import Qt
+
+MIN_SIZE = -sys.maxsize - 1
 
 def exportExcel(table, filename):
     try:
@@ -22,7 +31,7 @@ def exportExcel(table, filename):
         for col in range(0, max_col):
             col_letter = ws.cell(1, col + 1).column_letter
             max_length = ws.column_dimensions[col_letter].width
-            it = iter(range(2, max_row))
+            it = iter(range(1, max_row))
             for row in it:
                 span = table.rowSpan(row, col)
                 item = table.item(row, col)
@@ -44,6 +53,9 @@ def exportExcel(table, filename):
                     cell.value = int(item.text().strip())
                 else:
                     cell.value = item.text().strip()
+                rgb = item.background().color().rgb() % (256 * 256 * 256)
+                if rgb != 0:
+                    cell.fill = openpyxl.styles.PatternFill(patternType='solid',fgColor=hex(rgb)[2:])
                 max_length = max(max_length, len(str(cell.value)))
                 if span > 1:
                     ws.merge_cells(start_row = row + 1, start_column = col + 1, end_row = row + span, end_column = col + 1)
@@ -73,7 +85,7 @@ def exportExcel(table, filename):
         #             next(it)
 
         # 表头
-        for row in range(2):
+        for row in range(1):
             it = iter(range(max_col))
             for col in it:
                 span = table.columnSpan(row, col)

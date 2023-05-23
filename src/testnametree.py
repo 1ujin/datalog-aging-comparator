@@ -12,6 +12,7 @@ import os
 import re
 import sys
 from collections import OrderedDict
+from decimal import Decimal
 from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
@@ -56,8 +57,7 @@ class FullSizedDelegate(QStyledItemDelegate):
 
     @staticmethod
     def updateEditorGeometry(parent, option, index):
-        if index.column() != 5:
-            parent.setGeometry(option.rect)
+        parent.setGeometry(option.rect)
 
 
 class TestNameTree(QWidget):
@@ -154,16 +154,15 @@ class TestNameTree(QWidget):
         collapse_btn.clicked.connect(self.tree.collapseAll)
         self.tree.itemClicked.connect(self.treeClickedHandle)
         self.tree.header().setSectionsMovable(False)
-        self.tree.setHeaderLabel('Test Name 〉Pin')
-        self.tree.setHeaderHidden(True)
+        self.tree.setHeaderLabels(['Test Name  〉Pin', '下限（uA/uV）', '上限（uA/uV）'])
+        # self.tree.setHeaderHidden(True)
         # self.tree.addTopLevelItems([self.generateTreeByDfs(top) for top in self.loadTestName('../../data_log_splitter/data/tar/00100.txt').items()])
-        # self.tree.addTopLevelItems([self.generateTreeByDfs(top) for top in self.loadTestName('../data/QFP44_qian.txt').items()])
         # 展开全部
         # self.tree.expandAll()
         # 首列宽度自适应
         self.tree.resizeColumnToContents(0)
         # 自动调整宽度
-        self.tree.setItemDelegate(FullSizedDelegate(self.tree))
+        # self.tree.setItemDelegate(FullSizedDelegate(self.tree))
         # 不可编辑
         self.tree.setItemDelegateForColumn(0, UneditableDelegate(self.tree))
         # self.tree.setStyleSheet('QTreeWidget { border-top: none; }')
@@ -252,22 +251,55 @@ class TestNameTree(QWidget):
 
     def getCheckedPinMap(self):
         pin_map = OrderedDict()
-        it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.Checked)
-        while it.value():
-            if it.value().childCount() == 0:
-                testname = it.value().parent().text(0)
-                pinname = it.value().text(0)
-                if not pin_map.get(testname):
-                    pin_map[testname] = OrderedDict()
-                pin_map.get(testname)[pinname] = OrderedDict()
-            it.__iadd__(1)
+        try:
+            it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.Checked)
+            while it.value():
+                if it.value().childCount() == 0:
+                    testname = it.value().parent().text(0)
+                    pinname = it.value().text(0)
+                    if not pin_map.get(testname):
+                        pin_map[testname] = OrderedDict()
+                    pin_map.get(testname)[pinname] = OrderedDict()
+                else:
+                    testname = it.value().text(0)
+                    if not pin_map.get(testname):
+                        pin_map[testname] = OrderedDict()
+                    lower_bound = it.value().text(1)
+                    upper_bound = it.value().text(2)
+                    if lower_bound != None and len(lower_bound) > 0:
+                        if self.isnumber(lower_bound):
+                            pin_map.get(testname)['__lower_bound'] = Decimal(lower_bound)
+                        else:
+                            raise Exception('%s下限必须为数字' % testname)
+                    if upper_bound != None and len(upper_bound) > 0:
+                        if self.isnumber(upper_bound):
+                            pin_map.get(testname)['__upper_bound'] = Decimal(upper_bound)
+                        else:
+                            raise Exception('%s上限必须为数字' % testname)
+                it.__iadd__(1)
+        except Exception as e:
+            print(e)
         return pin_map
+
+    def isnumber(self, text):
+        if not text and len(text) == 0:
+            return False
+        if text[0] == '-':
+            text = text[1:]
+        vals = text.split('.')
+        if len(vals) > 2:
+            return False
+        for val in vals:
+            if not val.isdigit():
+                return False
+        return True
 
     def generateTree(self, pin_map):
         self.pin_map = pin_map
         self.tree.clear()
         self.tree_item_count = 0
         self.tree.addTopLevelItems([self.generateTreeByDfs(top, self.tree) for top in pin_map.items()])
+        self.tree.resizeColumnToContents(0)
 
     def searchItemByKeyword(self, keyword=None):
         if not keyword:
@@ -309,7 +341,7 @@ class TestNameTree(QWidget):
         def dfs(values, parent):
             root = QTreeWidgetItem(parent)
             self.tree_item_count += 1
-            root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate)
+            root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate | Qt.ItemIsEditable)
             root.setText(0, values[0])
             root.setCheckState(0, Qt.Unchecked)
             if values[1]:
