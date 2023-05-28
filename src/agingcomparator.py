@@ -153,7 +153,7 @@ class AgingComparator(QMainWindow):
         back_btn = QPushButton('返回')
         back_btn.clicked.connect(self.backToFileList)
         export_btn = QPushButton('导出')
-        export_btn.clicked.connect(self.exportExcel)
+        export_btn.clicked.connect(self.exportAndOpenExcel)
         table_btn_layout.addWidget(back_btn)
         table_btn_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
         table_btn_layout.addWidget(export_btn)
@@ -212,21 +212,21 @@ class AgingComparator(QMainWindow):
 
     def compareDatalog(self):
         try:
-            quit_reply = None
+            compare_reply = None
             hasResult = self.table.rowCount() != 0
             if hasResult:
-                quit_msgbox = QMessageBox(QMessageBox.Question, "查看对比结果", "是否重新对比并生成结果？")
-                quit_msgbox.setWindowIcon(self.logo)
-                quit_yesbtn = quit_msgbox.addButton("重新生成", QMessageBox.YesRole)
-                quit_nobtn = quit_msgbox.addButton("显示上次结果", QMessageBox.NoRole)
-                quit_cancelbtn = quit_msgbox.addButton("取消", QMessageBox.RejectRole)
-                quit_msgbox.setDefaultButton(quit_cancelbtn)
-                quit_reply = quit_msgbox.exec()
+                compare_msgbox = QMessageBox(QMessageBox.Question, "查看对比结果", "是否重新对比并生成结果？")
+                compare_msgbox.setWindowIcon(self.logo)
+                quit_yesbtn = compare_msgbox.addButton("重新生成", QMessageBox.YesRole)
+                quit_nobtn = compare_msgbox.addButton("显示上次结果", QMessageBox.NoRole)
+                quit_cancelbtn = compare_msgbox.addButton("取消", QMessageBox.RejectRole)
+                compare_msgbox.setDefaultButton(quit_cancelbtn)
+                compare_reply = compare_msgbox.exec()
 
-            if quit_reply == 2:
+            if compare_reply == 2:
                 return
             
-            if not hasResult or quit_reply == 0:
+            if not hasResult or compare_reply == 0:
                 pin_map = None
                 if self.tab.currentIndex() == 0:
                     pin_map = self.getCheckedPinMap()
@@ -309,10 +309,17 @@ class AgingComparator(QMainWindow):
         try:
             filename = self.exportExcel()
             if filename and os.path.exists(filename):
-                if sys.platform == 'win32':
-                    os.startfile(filename)
-                elif sys.platform == 'linux':
-                    os.system('xdg-open ' + filename)
+                open_msgbox = QMessageBox(QMessageBox.Question, "导出成功", "是否打开导出文件？")
+                open_msgbox.setWindowIcon(self.logo)
+                open_yesbtn = open_msgbox.addButton("打开", QMessageBox.YesRole)
+                open_nobtn = open_msgbox.addButton("取消", QMessageBox.NoRole)
+                open_msgbox.setDefaultButton(open_nobtn)
+                open_reply = open_msgbox.exec()
+                if open_reply == 0:
+                    if sys.platform == 'win32':
+                        os.startfile(filename)
+                    elif sys.platform == 'linux':
+                        os.system('xdg-open ' + filename)
         except Exception as e:
             print(e)
             if str(e) == 'user canceled':
