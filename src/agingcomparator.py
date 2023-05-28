@@ -163,6 +163,7 @@ class AgingComparator(QMainWindow):
         table_layout.setContentsMargins(12, 12, 0, 0)
         table_layout.addLayout(table_btn_layout)
         self.table = Table(self)
+        self.table.hide()
         table_layout.addWidget(self.table)
         self.right_layout.addWidget(self.table_layout_widget, 0, 0, 9, 16)
         self.table_layout_widget.hide()
@@ -195,6 +196,8 @@ class AgingComparator(QMainWindow):
             self.geometry_animation.start()
 
     def comparable(self):
+        if self.getBeginRegex() == None or self.getRegex() == None:
+            return False
         if self.file_list_before_aging.folder_list.count() + self.file_list_before_aging.file_list.count() == 0:
             return False
         if self.file_list_after_aging.folder_list.count() + self.file_list_after_aging.file_list.count() == 0:
@@ -277,14 +280,20 @@ class AgingComparator(QMainWindow):
         return self.testname_tree.getCheckedPinMap()
 
     def getRegex(self):
-        if self.testname_tree == None:
+        if self.tab.currentIndex() == 0:
+            return self.testname_tree.regex
+        elif self.tab.currentIndex() == 1:
+            return self.test_pin_table.regex
+        else:
             return None
-        return self.testname_tree.regex
 
     def getBeginRegex(self):
-        if self.testname_tree == None:
+        if self.tab.currentIndex() == 0:
+            return self.testname_tree.begin_regex
+        elif self.tab.currentIndex() == 1:
+            return self.test_pin_table.begin_regex
+        else:
             return None
-        return self.testname_tree.begin_regex
 
     def exportExcel(self):
         try:
