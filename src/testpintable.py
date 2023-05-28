@@ -18,13 +18,16 @@ import resource
 import util
 from formatdialog import FormatDialog
 
+BEGIN_REGEX = r'\ (Number[^A-Z]*)(Site[^A-Z]*)(Result[^A-Z]*)(Test\ Name[^A-Z]*)(Pin[^A-Z]*)(Channel[^A-Z]*)(Low[^A-Z]*)(Measured[^A-Z]*)(High[^A-Z]*)(Force[^A-Z]*)(Loc[^A-Z]*)\n'
+TEST_NAME_PIN_REGEX = r'\ (.{11})(.{6})(.{9})(.{26})(.{12})(.{10})(.{15})(.{15})(.{15})(.{15})(.{3})\s+'
+
 class TestPinTable(QWidget):
     """docstring for TestPinTable"""
     def __init__(self, parent=None):
         super(TestPinTable, self).__init__()
         self.parent = parent
-        self.regex = None
-        self.begin_regex = None
+        self.begin_regex = BEGIN_REGEX
+        self.regex = TEST_NAME_PIN_REGEX
         self.setStyleSheet('\
             QPushButton { font-family: \"微软雅黑\"; max-width: 50px; }')
         self.initUI()
@@ -86,9 +89,13 @@ class TestPinTable(QWidget):
                     testname = testname.text().strip()
                 else:
                     continue
+                if len(testname) == 0:
+                    continue
                 if pinname:
                     pinname = pinname.text().strip()
                 else:
+                    continue
+                if len(pinname) == 0:
                     continue
                 if not pin_map.get(testname):
                     pin_map[testname] = OrderedDict()
