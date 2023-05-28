@@ -10,9 +10,9 @@
 import pdb
 import os
 import sys
-from PyQt5.QtWidgets import QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QMenu, QAction, QDialog
+from PyQt5.QtWidgets import QApplication, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QMenu, QAction, QDialog
 from PyQt5.QtGui import QIcon, QPixmap, QCursor
-from PyQt5.QtCore import QPoint
+from PyQt5.QtCore import Qt, QPoint
 
 import resource
 
@@ -21,6 +21,7 @@ class ErrorDialog(QDialog):
     def __init__(self, parent=None):
         super(ErrorDialog, self).__init__()
         self.parent = parent
+        self.clipboard = QApplication.clipboard()
         # 设置阻塞整个应用程序
         # self.setWindowModality(Qt.ApplicationModal)
         # 设置窗口只有关闭按键
@@ -117,7 +118,11 @@ class ErrorDialog(QDialog):
             copy_action = QAction("复制路径", menu)
             copy_action.triggered.connect(lambda: self.clipboard.setText(path))
             menu.addAction(copy_action)
-            del_action = QAction("删除", menu)
-            del_action.triggered.connect(lambda: self.deletePath())
-            menu.addAction(del_action)
             menu.exec_(QCursor.pos())
+
+    def open(self, path):
+        if os.path.exists(path):
+            if sys.platform == 'win32':
+                os.startfile(path)
+            elif sys.platform == 'linux':
+                os.system('xdg-open ' + path)
