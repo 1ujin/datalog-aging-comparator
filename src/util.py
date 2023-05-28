@@ -39,9 +39,6 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
         it = iter(range(1, max_row))
         for row in it:
             if progress != None and progress.wasCanceled():
-                if sys.platform == 'win32' and taskbar_progress != None:
-                    taskbar_progress.resume()
-                    taskbar_progress.reset()
                 raise Exception('user canceled')
             item = table.item(row, col)
             if not item:
