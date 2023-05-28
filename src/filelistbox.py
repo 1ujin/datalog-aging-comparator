@@ -11,9 +11,7 @@ import pdb
 import os
 import re
 import sys
-from collections import OrderedDict
-from decimal import Decimal
-from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox
+from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction, QTableWidget, QTableWidgetItem, QMessageBox
 from PyQt5.QtGui import QIcon, QPixmap, QCursor, QBrush, QColor
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize
 
@@ -42,22 +40,7 @@ class FileListBox(QWidget):
         self.setWindowIcon(self.logo)
         self.setStyleSheet('\
             QPushButton { font-family: \"微软雅黑\"; } \
-            QLabel { height: 28px;  font-family: \"微软雅黑\" } \
-            QToolBoxButton { min-width: 150px; min-height: 30px; font-size: 28 } \
-            QToolBox::tab { height: 28px; font-family: \"微软雅黑\"; font-size: 28 } \
-            QToolBox * { margin: 0px } \
-            QToolBar#right_bar { border: none } \
-            QToolBar#right_bar QPushButton { width: auto; background-color: green; font-size: 25px } \
-            QScrollArea { border: none } \
-            QGroupBox { font-family: \"微软雅黑\" } \
-            QTreeWidget { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
-            QTreeWidget::branch:has-siblings:!adjoins-item { border-image: url(\":/images/branch-vline.png\") 0; } \
-            QTreeWidget::branch:has-siblings:adjoins-item { border-image: url(\":/images/branch-more.png\") 0; } \
-            QTreeWidget::branch:!has-children:!has-siblings:adjoins-item { border-image: url(\":/images/branch-end.png\") 0; } \
-            QTreeWidget::branch:closed:has-children { border-image: none; image: url(\":/images/branch-closed.png\"); } \
-            QTreeWidget::branch::open::has-children { border-image: none; image: url(\":/images/branch-opened.png\"); } \
-            QCheckBox { height: 28px; font-family: \"微软雅黑\"; font-size: 10; margin-left: 10px; } \
-            QLineEdit { height: 28px; font-family: \"微软雅黑\"; font-size: 10; }')
+            QListWidget { font-family: \"微软雅黑\"; font-size: 18px; }')
         self.initUI()
 
     def initUI(self):
@@ -67,18 +50,14 @@ class FileListBox(QWidget):
         self.folder_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.folder_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
 
-        folder_btn = QPushButton('添加路径')
+        folder_btn = QPushButton('添加路径', self)
         folder_btn.clicked.connect(self.openDir)
-        file_btn = QPushButton('添加文件')
+        file_btn = QPushButton('添加文件', self)
         file_btn.clicked.connect(self.openFile)
-        del_btn = QPushButton('删除')
+        del_btn = QPushButton('删除', self)
         del_btn.clicked.connect(self.deletePath)
-        clr_btn = QPushButton('清空')
+        clr_btn = QPushButton('清空', self)
         clr_btn.clicked.connect(self.clearPath)
-        # extract_btn = QPushButton('提取')
-        # extract_btn.clicked.connect(self.fillTable)
-        # export_btn = QPushButton('导出')
-        # export_btn.clicked.connect(self.exportExcel)
         
         folder_btn_layout = QHBoxLayout()
         folder_btn_layout.addWidget(folder_btn)
@@ -96,14 +75,7 @@ class FileListBox(QWidget):
         self.file_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
         self.file_list.hide()
 
-        # self.table = Table(self)
-        # self.table.setAlternatingRowColors(True)
-        # self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        # self.table.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
-        # self.table.hide()
-        # extract_btn.clicked.connect(self.table.fillTable)
-
-        expand_btn = QPushButton()
+        expand_btn = QPushButton(self)
         expand_btn.setToolTip('展开所有文件夹并剔除文件')
         expand_btn.clicked.connect(self.expandAllFile)
         # expand_btn.setStyleSheet('height: 70px; width: 12px;')
@@ -112,23 +84,14 @@ class FileListBox(QWidget):
         expand_btn.setIcon(QIcon(':/images/expand.png'))
         file_btn_layout = QVBoxLayout()
         file_btn_layout.addWidget(expand_btn, alignment=Qt.AlignHCenter)
-
-        # top_layout = QHBoxLayout()
-        # top_layout.addWidget(self.folder_list)
-        # top_layout.addLayout(file_btn_layout)
-        # top_layout.addWidget(self.file_list)
-        # top_layout.setContentsMargins(0, 0, 0, 0)
-        # top_layout.setSpacing(6)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 0, 0)
         folder_btn_layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(folder_btn_layout)
         layout.addWidget(self.folder_list, stretch=1)
-        # layout.addLayout(top_layout, stretch=1)
         layout.addLayout(file_btn_layout)
         layout.addWidget(self.file_list, stretch=3)
-        # layout.addWidget(self.table, stretch=3)
 
     def openDir(self):
         """ 打开选择路径对话框 """
@@ -138,6 +101,7 @@ class FileListBox(QWidget):
         if dir_name not in self.dir_set:
             self.dir_set.add(dir_name)
             QListWidgetItem(dir_name, self.folder_list)
+        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
     def openFile(self):
         """ 打开文件多选对话框 """
@@ -148,6 +112,7 @@ class FileListBox(QWidget):
             if file not in self.file_set:
                 self.file_set.add(file)
                 QListWidgetItem(file, self.folder_list)
+        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
     def deletePath(self):
         """ 删除所选的路径 """
@@ -159,7 +124,7 @@ class FileListBox(QWidget):
                 self.dir_set.discard(text)
                 self.file_set.discard(text)
             self.folder_list.takeItem(self.folder_list.row(item))
-        self.Signal_Row_Count.emit(self.file_list.count())
+        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
     def clearPath(self):
         """ 清空所有路径 """
@@ -169,7 +134,7 @@ class FileListBox(QWidget):
         self.file_list.clear()
         self.file_list.hide()
         # self.table.hide()
-        self.Signal_Row_Count.emit(self.file_list.count())
+        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
     def expandAllFile(self):
         if self.folder_list.count() == 0:
@@ -189,7 +154,7 @@ class FileListBox(QWidget):
             if os.path.splitext(path)[1].lower() == '.txt':
                 QListWidgetItem(path, self.file_list)
         self.file_list.show()
-        self.Signal_Row_Count.emit(self.file_list.count())
+        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
     def getPathList(self):
         path_list = list()
@@ -233,12 +198,6 @@ class FileListBox(QWidget):
             del_action.triggered.connect(lambda: self.deletePath())
             menu.addAction(del_action)
             menu.exec_(QCursor.pos())
-
-    # def exportExcel(self):
-    #     filename = QFileDialog.getSaveFileName(self, '导出表格', filter='Excel Files (*.xlsx *.xls)')[0]
-    #     if filename == '':
-    #         return
-    #     util.exportExcel(self.table, filename)
 
 
 if __name__ == "__main__":

@@ -8,15 +8,19 @@
 """
 
 import pdb
+import os
 import re
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QDialog, QFormLayout, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QSpinBox, QPushButton, QMessageBox, QGroupBox, QFormLayout, QFileDialog
+from collections import OrderedDict
+from PyQt5.QtWidgets import QApplication, QDialog, QFormLayout, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QSpinBox, QPushButton, QMessageBox, QGroupBox, QFileDialog
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 
 import resource
 
 COLUMN_NAME = ['Number', 'Site', 'Result', r'Test\ Name', 'Pin', 'Channel', 'Low', 'Measured', 'High', 'Force', 'Loc']
+BEGIN_REGEX = r'\ (%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)\n'
+TEST_NAME_PIN_REGEX = r'\ (.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})\s+'
 
 class FormatDialog(QDialog):
     """docstring for FormatDialog"""
@@ -24,9 +28,12 @@ class FormatDialog(QDialog):
     column_width = [11, 6, 9, 26, 12, 10, 15, 15, 15, 15, 3]
     Signal_Pin_Dict = pyqtSignal(dict)
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, load_mode=False):
         super(FormatDialog, self).__init__(parent)
         self.parent = parent
+        self.load_mode = load_mode
+        self.regex = None
+        self.begin_regex = BEGIN_REGEX % (*COLUMN_NAME, )
         # 设置阻塞整个应用程序
         self.setWindowModality(Qt.ApplicationModal)
         # 设置窗口只有关闭按键
@@ -37,20 +44,7 @@ class FormatDialog(QDialog):
         self.setStyleSheet('\
             QPushButton { font-family: \"微软雅黑\"; font-size: 18px; max-width: 100px; } \
             QLabel { height: 28px;  font-family: \"微软雅黑\"; font-size: 18px; } \
-            QToolBoxButton { min-width: 150px; min-height: 30px; font-size: 28 } \
-            QToolBox::tab { height: 28px; font-family: \"微软雅黑\"; font-size: 28 } \
-            QToolBox * { margin: 0px } \
-            QToolBar#right_bar { border: none } \
-            QToolBar#right_bar QPushButton { width: auto; background-color: green; font-size: 25px } \
-            QScrollArea { border: none } \
             QGroupBox { font-family: \"微软雅黑\" } \
-            QTreeWidget { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
-            QTreeWidget::branch:has-siblings:!adjoins-item { border-image: url(\":/images/branch-vline.png\") 0; } \
-            QTreeWidget::branch:has-siblings:adjoins-item { border-image: url(\":/images/branch-more.png\") 0; } \
-            QTreeWidget::branch:!has-children:!has-siblings:adjoins-item { border-image: url(\":/images/branch-end.png\") 0; } \
-            QTreeWidget::branch:closed:has-children { border-image: none; image: url(\":/images/branch-closed.png\"); } \
-            QTreeWidget::branch::open::has-children { border-image: none; image: url(\":/images/branch-opened.png\"); } \
-            QCheckBox { height: 28px; font-family: \"微软雅黑\"; font-size: 10; margin-left: 10px; } \
             QSpinBox { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
             QLineEdit { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; }')
         self.initUI()
@@ -85,6 +79,9 @@ class FormatDialog(QDialog):
         layout.addWidget(group1, stretch=0)
         layout.addWidget(group2, stretch=0)
         layout.addWidget(confirm_btn, alignment=Qt.AlignHCenter)
+
+        if not self.load_mode:
+            group1.hide()
         
         # QGridLayout
         # layout = QGridLayout(self)
@@ -104,13 +101,10 @@ class FormatDialog(QDialog):
         if filename == None or len(filename) == 0:
             return
         self.path_line_edit.setText(filename)
-        column_width = None
-        begin_regex = r'\ (%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)\n' % (*COLUMN_NAME, )
-        self.parent.begin_regex = begin_regex
-        with open(filename) as f:
+        with open(filename, 'r') as f:
             line = f.readline()
             while line != None and len(line) > 0:
-                matcher = re.match(begin_regex, line)
+                matcher = re.match(self.begin_regex, line)
                 if matcher:
                     groups = matcher.groups()
                     for (x, y) in zip(self.findChildren(QSpinBox), groups):
@@ -119,17 +113,40 @@ class FormatDialog(QDialog):
                 line = f.readline()
 
     def confirm(self):
-        regex = self.getRegex()
-        self.parent.regex = regex
-        datalog_path = self.path_line_edit.text()
-        pin_map = self.parent.loadTestName(datalog_path, regex)
-        self.Signal_Pin_Dict.emit(pin_map)
+        self.regex = self.getRegex()
+        self.parent.regex = self.regex
+        self.parent.begin_regex = self.begin_regex
+        if self.load_mode:
+            datalog_path = self.path_line_edit.text()
+            if datalog_path != None and len(datalog_path) > 0:
+                if not os.path.exists(datalog_path):
+                    QMessageBox.critical(self, "提示", "找不到文件：\n" + datalog_path)
+                else:
+                    pin_map = self.loadTestName(datalog_path, self.regex)
+                    self.Signal_Pin_Dict.emit(pin_map)
         self.close()
 
     def getRegex(self):
         self.column_width = [x.value() for x in self.findChildren(QSpinBox)]
-        regex = r'\ (.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})\s+' % (*self.column_width, )
+        regex = TEST_NAME_PIN_REGEX % (*self.column_width, )
         return regex
+
+    def loadTestName(self, filename, regex=None):
+        pin_map = OrderedDict()
+        with open(filename, 'r', encoding='utf-8') as f:
+            line = f.readline()
+            while line != None and len(line) > 0:
+                matcher = re.match(regex, line)
+                if matcher:
+                    groups = matcher.groups()
+                    if groups[0].strip().isdigit():
+                        testname = groups[3].strip()
+                        pin = groups[4].strip()
+                        if not pin_map.get(testname):
+                            pin_map[testname] = OrderedDict()
+                        pin_map.get(testname)[pin] = OrderedDict()
+                line = f.readline()
+        return pin_map
 
 
 if __name__ == '__main__':

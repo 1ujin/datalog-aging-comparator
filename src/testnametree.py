@@ -8,16 +8,16 @@
 """
 
 import pdb
-import os
 import re
 import sys
 from collections import OrderedDict
 from decimal import Decimal
-from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 
 import resource
+import util
 from formatdialog import FormatDialog
 
 TEST_NAME_PIN_REGEX = r'\ (.{11})(.{6})(.{9})(.{26})(.{11})(.{10})((.{15}){4})(.{3})\s+'
@@ -84,34 +84,29 @@ class TestNameTree(QWidget):
         self.setWindowIcon(self.logo)
         self.setStyleSheet('\
             QPushButton { font-family: \"微软雅黑\"; max-width: 50px; } \
-            QLabel { height: 28px;  font-family: \"微软雅黑\" } \
-            QToolBoxButton { min-width: 150px; min-height: 30px; font-size: 28 } \
-            QToolBox::tab { height: 28px; font-family: \"微软雅黑\"; font-size: 28 } \
-            QToolBox * { margin: 0px } \
-            QToolBar#right_bar { border: none } \
-            QToolBar#right_bar QPushButton { width: auto; background-color: green; font-size: 25px } \
             QScrollArea { border: none } \
-            QGroupBox { font-family: \"微软雅黑\" } \
-            QTreeWidget { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
-            QTreeWidget::branch:has-siblings:!adjoins-item { border-image: url(\":/images/branch-vline.png\") 0; } \
-            QTreeWidget::branch:has-siblings:adjoins-item { border-image: url(\":/images/branch-more.png\") 0; } \
-            QTreeWidget::branch:!has-children:!has-siblings:adjoins-item { border-image: url(\":/images/branch-end.png\") 0; } \
-            QTreeWidget::branch:closed:has-children { border-image: none; image: url(\":/images/branch-closed.png\"); } \
-            QTreeWidget::branch::open::has-children { border-image: none; image: url(\":/images/branch-opened.png\"); }')
+            QTreeView { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
+            QTreeView::item { border: solid lightgray; border-width: 1px 1px 0px 0px; } \
+            QTreeView::item:closed:!has-siblings:has-children { border: solid lightgray; border-width: 1px 1px 1px 0px; } \
+            QTreeView::branch:has-siblings:!adjoins-item { border-image: url(\":/images/branch-vline.png\") 0; } \
+            QTreeView::branch:has-siblings:adjoins-item { border-image: url(\":/images/branch-more.png\") 0; } \
+            QTreeView::branch:!has-children:!has-siblings:adjoins-item { border-image: url(\":/images/branch-end.png\") 0; } \
+            QTreeView::branch:closed:has-children { border-image: none; image: url(\":/images/branch-closed.png\"); } \
+            QTreeView::branch:open:has-children { border-image: none; image: url(\":/images/branch-opened.png\"); }')
         self.initUI()
 
     def initUI(self):
-        load_btn = QPushButton('导入')
+        load_btn = QPushButton('导入', self)
         load_btn.clicked.connect(self.load)
-        select_all_btn = QPushButton('全选')
+        select_all_btn = QPushButton('全选', self)
         select_all_btn.clicked.connect(self.selectAllTreeItem)
-        reverse_selected_btn = QPushButton('反选')
+        reverse_selected_btn = QPushButton('反选', self)
         reverse_selected_btn.clicked.connect(self.reverseSelectedTreeItem)
-        clear_selected_btn = QPushButton('清空')
+        clear_selected_btn = QPushButton('清空', self)
         clear_selected_btn.clicked.connect(self.clearSelectedTreeItem)
-        expand_btn = QPushButton('展开')
-        collapse_btn = QPushButton('折叠')
-        search_btn = QPushButton('查找')
+        expand_btn = QPushButton('展开', self)
+        collapse_btn = QPushButton('折叠', self)
+        search_btn = QPushButton('查找', self)
         
         btn_layout = QHBoxLayout()
         btn_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
@@ -125,13 +120,13 @@ class TestNameTree(QWidget):
         # btn_layout.setSpacing(0)
         # btn_layout.setContentsMargins(0, 0, 0, 0)
 
-        search_line_edit = QLineEdit()
+        search_line_edit = QLineEdit(self)
         search_line_edit.setStyleSheet('font-size: 18px;')
         search_line_edit.setPlaceholderText('请输入关键字')
         search_line_edit.returnPressed.connect(self.searchItemByKeyword)
-        prev_item_btn = QPushButton('上一个')
+        prev_item_btn = QPushButton('上一个', self)
         prev_item_btn.clicked.connect(lambda: self.searchPreviousItemByKeyword(search_line_edit.text()))
-        next_item_btn = QPushButton('下一个')
+        next_item_btn = QPushButton('下一个', self)
         next_item_btn.clicked.connect(lambda: self.searchNextItemByKeyword(search_line_edit.text()))
         
         search_layout = QHBoxLayout()
@@ -179,22 +174,14 @@ class TestNameTree(QWidget):
         layout.addWidget(self.search_frame)
         # layout.addWidget(line)
         layout.addWidget(self.tree)
-        # tab1 = QWidget()
-        # tab1.setLayout(layout)
-        # tab = QTabWidget()
-        # tab.setTabPosition(QTabWidget.West)
-        # tab.addTab(tab1, '导入测试项')
-        # tab.addTab(QWidget(), '手动填写测试项')
-        # self.setCentralWidget(tab)
         self.setLayout(layout)
     
     def load(self):
         """ 打开配置对话框并导入测试项 """
-        dialog = FormatDialog(self)
+        dialog = FormatDialog(self, load_mode=True)
         dialog.Signal_Pin_Dict.connect(self.generateTree)
-        dialog.open()
-        dialog.resize(dialog.height() / 1.5, dialog.height())
-        dialog.exec_()
+        dialog.resize(dialog.width(), dialog.height())
+        dialog.exec()
 
     def selectAllTreeItem(self):
         """ 全选 """
@@ -267,32 +254,20 @@ class TestNameTree(QWidget):
                     lower_bound = it.value().text(1)
                     upper_bound = it.value().text(2)
                     if lower_bound != None and len(lower_bound) > 0:
-                        if self.isnumber(lower_bound):
+                        if util.isnumber(lower_bound):
                             pin_map.get(testname)['__lower_bound'] = Decimal(lower_bound)
                         else:
                             raise Exception('%s下限必须为数字' % testname)
                     if upper_bound != None and len(upper_bound) > 0:
-                        if self.isnumber(upper_bound):
+                        if util.isnumber(upper_bound):
                             pin_map.get(testname)['__upper_bound'] = Decimal(upper_bound)
                         else:
                             raise Exception('%s上限必须为数字' % testname)
                 it.__iadd__(1)
         except Exception as e:
             print(e)
+            raise e
         return pin_map
-
-    def isnumber(self, text):
-        if not text and len(text) == 0:
-            return False
-        if text[0] == '-':
-            text = text[1:]
-        vals = text.split('.')
-        if len(vals) > 2:
-            return False
-        for val in vals:
-            if not val.isdigit():
-                return False
-        return True
 
     def generateTree(self, pin_map):
         self.pin_map = pin_map
@@ -341,12 +316,15 @@ class TestNameTree(QWidget):
         def dfs(values, parent):
             root = QTreeWidgetItem(parent)
             self.tree_item_count += 1
-            root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate | Qt.ItemIsEditable)
             root.setText(0, values[0])
             root.setCheckState(0, Qt.Unchecked)
             if values[1]:
                 for child in values[1].items():
                     dfs(child, root)
+            if root.childCount() == 0:
+                root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate)
+            else:
+                root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate | Qt.ItemIsEditable)
             return root
         return dfs(values, parent)
 
@@ -415,7 +393,6 @@ class TestNameTree(QWidget):
 
 if __name__ == "__main__":
     """ 主方法 """
-    QApplication.setStyle(QStyleFactory.create('Fusion'))
     app = QApplication(sys.argv)
     __tree = TestNameTree()
     __tree.show()

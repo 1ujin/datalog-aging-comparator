@@ -13,12 +13,13 @@ import re
 import sys
 from collections import OrderedDict
 from decimal import Decimal
-from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QProgressDialog
-from PyQt5.QtGui import QIcon, QPixmap, QCursor, QBrush, QColor
-from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QProgressDialog
+from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtCore import Qt
 
 import resource
 import util
+from errordialog import ErrorDialog
 
 MIN_SIZE = -sys.maxsize - 1
 
@@ -36,6 +37,7 @@ class Table(QTableWidget):
         duplicate_error = list()
         temperature_error = list()
 
+        chip_max_count = 0
         for path in before_list:
             # 提取编号
             basename = os.path.basename(path)
@@ -79,6 +81,8 @@ class Table(QTableWidget):
                 duplicate_error.append(path)
             else:
                 after_aging_dict[temperature] = path
+            if chip_dict.get('before_aging') and chip_dict.get('after_aging'):
+                chip_max_count = max(chip_max_count, len(chip_dict.get('after_aging')))
 
         # for path in path_list:
         #     # 提取编号
@@ -120,15 +124,37 @@ class Table(QTableWidget):
         #         else:
         #             after_aging_dict[temperature] = path
 
+        error_reply = 1
+        if len(id_error) + len(duplicate_error) + len(temperature_error) > 0:
+            if self.progress:
+                self.progress.reset()
+                if sys.platform == 'win32':
+                    self.taskbar_progress.resume()
+                    self.taskbar_progress.reset()
+            # 错误列表
+            dialog = ErrorDialog(self)
+            dialog.fillIdErrorList(id_error)
+            dialog.fillDuplicateErrorList(duplicate_error)
+            dialog.fillTemperatureErrorList(temperature_error)
+            error_reply = dialog.exec()
+
+        if error_reply != 1:
+            raise Exception('user canceled')
+
+        if chip_max_count < 1:
+            raise Exception('找不到可比较的老炼前后Datalog')
+
         if self.progress:
             self.progress.setLabelText('正在解析文件内容')
-            self.progress.setRange(0, len(path_dict) + len(pin_map))
+            self.progress.setRange(0, len(path_dict))
+            self.progress.setValue(0)
             if sys.platform == 'win32':
                 self.taskbar_progress = self.parent.taskbar_progress
-                self.taskbar_progress.setRange(0, len(path_dict) + len(pin_map))
+                self.taskbar_progress.setRange(0, len(path_dict))
                 self.taskbar_progress.setValue(0)
 
         done = 0
+        total = 0
         compare_dict = OrderedDict()
         for testname in pin_map.keys():
             compare_dict[testname] = dict()
@@ -156,12 +182,72 @@ class Table(QTableWidget):
                 line = f.readline()
                 while line != None and len(line) > 0:
                     matcher = re.match(regex, line)
-                    if matcher:
+                    if not matcher:
+                        line = f.readline()
+                        continue
+                    group = matcher.groups()
+                    testname = group[3].strip()
+                    pinname = group[4].strip()
+                    # 匹配测试项
+                    testname_dict = pin_map.get(testname)
+                    if testname_dict == None:
+                        # 该测试项未被选中
+                        line = f.readline()
+                        continue
+                    compare_testname_dict = compare_dict.get(testname)
+                    if testname_dict != None and compare_testname_dict != None:
+                        if compare_testname_dict.get(chip_id) == None:
+                            compare_testname_dict[chip_id] = dict()
+                        compare_chip_dict = compare_testname_dict.get(chip_id)
+                        # 匹配Pin
+                        pinname_dict = testname_dict.get(pinname)
+                        if pinname_dict != None:
+                            if compare_chip_dict.get(pinname) == None:
+                                compare_chip_dict[pinname] = OrderedDict()
+                            compare_pin_dict = compare_chip_dict.get(pinname)
+                            val = group[7].strip()
+                            if val.find('n') > -1:
+                                val = Decimal(val.split(' ')[0]) / 1000
+                            elif val.find('u') > -1:
+                                val = Decimal(val.split(' ')[0])
+                            elif val.find('m') > -1:
+                                val = Decimal(val.split(' ')[0]) * 1000
+                            else:
+                                val = Decimal(val.split(' ')[0]) * 1000 * 1000
+                            compare_pin_dict[MIN_SIZE] = val
+                            pinname_dict[MIN_SIZE] = True
+                            total += 1
+                    line = f.readline()
+            
+            # 老炼后
+            after_item = path_item[1].get('after_aging')
+            if not after_item:
+                continue
+            for temperature_item in after_item.items():
+                # 循环温度
+                after_temperature, after_temperature_path = temperature_item
+                # 读取文件
+                with open(after_temperature_path, 'r') as f:
+                    line = f.readline()
+                    while line != None and len(line) > 0:
+                        if re.match(begin_regex, line):
+                            break
+                        line = f.readline()
+                    line = f.readline()
+                    while line != None and len(line) > 0:
+                        matcher = re.match(regex, line)
+                        if not matcher:
+                            line = f.readline()
+                            continue
                         group = matcher.groups()
                         testname = group[3].strip()
                         pinname = group[4].strip()
                         # 匹配测试项
                         testname_dict = pin_map.get(testname)
+                        if testname_dict == None:
+                            # 该测试项未被选中
+                            line = f.readline()
+                            continue
                         compare_testname_dict = compare_dict.get(testname)
                         if testname_dict != None and compare_testname_dict != None:
                             if compare_testname_dict.get(chip_id) == None:
@@ -182,62 +268,23 @@ class Table(QTableWidget):
                                     val = Decimal(val.split(' ')[0]) * 1000
                                 else:
                                     val = Decimal(val.split(' ')[0]) * 1000 * 1000
-                                compare_pin_dict[MIN_SIZE] = val
-                                pinname_dict[MIN_SIZE] = True
-                    line = f.readline()
-            
-            # 老炼后
-            after_item = path_item[1].get('after_aging')
-            if not after_item:
-                continue
-            for temperature_item in after_item.items():
-                # 循环温度
-                after_temperature, after_temperature_path = temperature_item
-                # 读取文件
-                with open(after_temperature_path, 'r') as f:
-                    line = f.readline()
-                    while line != None and len(line) > 0:
-                        if re.match(begin_regex, line):
-                            break
+                                compare_pin_dict[after_temperature] = val
+                                pinname_dict[after_temperature] = True
                         line = f.readline()
-                    line = f.readline()
-                    while line != None and len(line) > 0:
-                        matcher = re.match(regex, line)
-                        if matcher:
-                            group = matcher.groups()
-                            testname = group[3].strip()
-                            pinname = group[4].strip()
-                            # 匹配测试项
-                            testname_dict = pin_map.get(testname)
-                            if not compare_dict.get(testname):
-                                compare_dict[testname] = OrderedDict()
-                            compare_testname_dict = compare_dict.get(testname)
-                            if testname_dict != None and compare_testname_dict != None:
-                                if compare_testname_dict.get(chip_id) == None:
-                                    compare_testname_dict[chip_id] = dict()
-                                compare_chip_dict = compare_testname_dict.get(chip_id)
-                                # 匹配Pin
-                                pinname_dict = testname_dict.get(pinname)
-                                if pinname_dict != None:
-                                    if compare_chip_dict.get(pinname) == None:
-                                        compare_chip_dict[pinname] = OrderedDict()
-                                    compare_pin_dict = compare_chip_dict.get(pinname)
-                                    val = group[7].strip()
-                                    if val.find('n') > -1:
-                                        val = Decimal(val.split(' ')[0]) / 1000
-                                    elif val.find('u') > -1:
-                                        val = Decimal(val.split(' ')[0])
-                                    elif val.find('m') > -1:
-                                        val = Decimal(val.split(' ')[0]) * 1000
-                                    else:
-                                        val = Decimal(val.split(' ')[0]) * 1000 * 1000
-                                    compare_pin_dict[after_temperature] = val
-                                    pinname_dict[after_temperature] = True
-                        line = f.readline()
+        
+        if self.progress:
+            self.progress.setLabelText('正在填充表格')
+            self.progress.setRange(0, total)
+            self.progress.setValue(0)
+            if sys.platform == 'win32':
+                self.taskbar_progress = self.parent.taskbar_progress
+                self.taskbar_progress.setRange(0, total)
+                self.taskbar_progress.setValue(0)
         return compare_dict, pin_map, path_dict, id_error, temperature_error, duplicate_error
 
     def fillTable(self, before_list, after_list, pin_map, regex, begin_regex):
-        self.progress = QProgressDialog(self)
+        if self.progress == None:
+            self.progress = QProgressDialog(self)
         self.progress.setWindowTitle('请稍等...')
         self.progress.setLabelText('正在计算文件数量')
         self.progress.setCancelButtonText('停止')
@@ -248,6 +295,7 @@ class Table(QTableWidget):
         # 设置窗口标题只有关闭
         self.progress.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
 
+        self.progress.setValue(0)
         if sys.platform == 'win32':
             self.taskbar_progress = self.parent.taskbar_progress
             self.taskbar_progress.setValue(0)
@@ -272,14 +320,24 @@ class Table(QTableWidget):
             QMessageBox.warning(self, "提示", "请选择至少一个有效的Datalog！")
             return
 
-        self.progress.setLabelText('正在填充表格')
         try:
             self.clear()
             self.setRowCount(3)
             self.setColumnCount(0)
-            
+
             col = 0
-            done = self.progress.value()
+            done = 0
+            # 确定列数
+            for pin_dict in pin_map.values():
+                # 表头
+                temp_set = set()
+                for pin_item in pin_dict.items():
+                    if pin_item[0] == '__upper_bound' or pin_item[0] == '__lower_bound':
+                        continue
+                    temp_set.update(pin_item[1].keys())
+                for i in range(len(temp_set) * 3):
+                    self.insertColumn(self.columnCount())
+            
             for testname_item in pin_map.items():
                 if self.progress.wasCanceled():
                     if sys.platform == 'win32':
@@ -287,11 +345,7 @@ class Table(QTableWidget):
                         self.taskbar_progress.reset()
                     self.setRowCount(0)
                     self.setColumnCount(0)
-                    return
-                done += 1
-                self.progress.setValue(done)
-                if sys.platform == 'win32':
-                    self.taskbar_progress.setValue(done)
+                    raise Exception('user canceled')
                 # 循环测试项
                 testname, pin_dict = testname_item
                 lower_bound = pin_dict.get('__lower_bound')
@@ -305,17 +359,17 @@ class Table(QTableWidget):
                     temp_set.update(pin_item[1].keys())
                 temp_list = list(temp_set)
                 temp_list.sort()
-                for i in range(len(temp_set) * 3):
-                    self.insertColumn(self.columnCount())
+                # for i in range(len(temp_set) * 3):
+                #     self.insertColumn(self.columnCount())
                 current_w = 0
                 self.setSpan(0, col + current_w, 1, len(temp_set) * 3)
-                upper_bound = ''
-                if pin_dict.get('__upper_bound') != None:
-                    upper_bound = pin_dict.get('__upper_bound')
-                lower_bound = ''
-                if pin_dict.get('__lower_bound') != None:
-                    lower_bound = pin_dict.get('__lower_bound')
-                bound = ' [%s,%s]' % (str(lower_bound), str(upper_bound))
+                bound = ''
+                if lower_bound == None:
+                    lower_bound = ''
+                if upper_bound == None:
+                    upper_bound = ''
+                if lower_bound != '' or upper_bound != '':
+                    bound = ' [%s,%s]' % (str(lower_bound), str(upper_bound))
                 self.setItem(0, col + current_w, self.getTableItem(testname + bound))
                 current_w += 2
                 self.setItem(1, col + current_w, self.getTableItem('老炼前'))
@@ -335,14 +389,39 @@ class Table(QTableWidget):
                 # 测试结果
                 compare_testname_dict = compare_dict.get(testname)
                 if not compare_testname_dict:
+                    if self.progress.wasCanceled():
+                        if sys.platform == 'win32':
+                            self.taskbar_progress.resume()
+                            self.taskbar_progress.reset()
+                        self.setRowCount(0)
+                        self.setColumnCount(0)
+                        raise Exception('user canceled')
+                    done += len(chip_dict)
+                    self.progress.setValue(done)
+                    if sys.platform == 'win32':
+                        self.taskbar_progress.setValue(done)
                     continue
                 row = 2
                 max_w = 0
                 for compare_chip_item in compare_testname_dict.items():
+                    if self.progress.wasCanceled():
+                        if sys.platform == 'win32':
+                            self.taskbar_progress.resume()
+                            self.taskbar_progress.reset()
+                        self.setRowCount(0)
+                        self.setColumnCount(0)
+                        raise Exception('user canceled')
                     # 循环芯片
                     chip_id, compare_pin_dict = compare_chip_item
                     current_h = 0
                     for pin_item in pin_dict.items():
+                        if self.progress.wasCanceled():
+                            if sys.platform == 'win32':
+                                self.taskbar_progress.resume()
+                                self.taskbar_progress.reset()
+                            self.setRowCount(0)
+                            self.setColumnCount(0)
+                            raise Exception('user canceled')
                         # 循环Pin
                         pinname, temperature = pin_item
                         if pinname == '__lower_bound' or pinname == '__upper_bound':
@@ -359,6 +438,10 @@ class Table(QTableWidget):
                         before_val = compare_temp_dict.get(MIN_SIZE)
                         if before_val:
                             self.setItem(row + current_h, col + current_w, self.getTableItem(self.convertDecimal(before_val)))
+                            done += 1
+                            self.progress.setValue(done)
+                            if sys.platform == 'win32':
+                                self.taskbar_progress.setValue(done)
                         current_w += 1
                         diff = None
                         for compare_temp_item in compare_temp_dict.items():
@@ -392,13 +475,18 @@ class Table(QTableWidget):
             self.progress.cancel()
             if sys.platform == 'win32':
                 self.taskbar_progress.stop()
-            QMessageBox.critical(self, "提示", "失败\n" + str(e))
+            if str(e) == 'user canceled':
+                QMessageBox.information(self, "提示", "已取消")
+            else:
+                QMessageBox.critical(self, "提示", "失败\n" + str(e))
             if sys.platform == 'win32':
                 self.taskbar_progress.resume()
                 self.taskbar_progress.reset()
             print(e)
             return
+        self.progress.reset()
         if sys.platform == 'win32':
+            self.taskbar_progress.resume()
             self.taskbar_progress.reset()
         self.show()
 
@@ -420,5 +508,35 @@ class Table(QTableWidget):
         filename = QFileDialog.getSaveFileName(self, '导出表格', filter='Excel Files (*.xlsx *.xls)')[0]
         if filename == '':
             return
-        util.exportExcel(self, filename)
-        return filename
+        if self.progress == None:
+            self.progress = QProgressDialog(self)
+        self.progress.setWindowTitle('请稍等...')
+        self.progress.setLabelText('正在导出')
+        self.progress.setCancelButtonText('停止')
+        self.progress.setMinimumDuration(100)
+        self.progress.setFixedWidth(500)
+        # 窗口是应用的模式窗口，阻塞所有其他应用窗口获得输入
+        self.progress.setWindowModality(Qt.ApplicationModal)
+        # 设置窗口标题只有关闭
+        self.progress.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
+
+        try:
+            if sys.platform == 'win32':
+                util.exportExcel(self, filename, self.progress, self.parent.taskbar_progress)
+            else:
+                util.exportExcel(self, filename, self.progress)
+            return filename
+        except PermissionError as e:
+             QMessageBox.critical(self, "提示", "文件已被打开或占用")
+        except Exception as e:
+            print(e)
+            self.progress.cancel()
+            if sys.platform == 'win32':
+                self.taskbar_progress.stop()
+            if str(e) == 'user canceled':
+                QMessageBox.information(self, "提示", "已取消")
+            else:
+                QMessageBox.critical(self, "提示", "失败\n" + str(e))
+            if sys.platform == 'win32':
+                self.taskbar_progress.resume()
+                self.taskbar_progress.reset()
