@@ -13,7 +13,7 @@ import re
 import sys
 from collections import OrderedDict
 from decimal import Decimal
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QProgressDialog
+from PyQt5.QtWidgets import QFileDialog, QTableWidget, QTableWidgetItem, QMessageBox, QProgressDialog
 from PyQt5.QtGui import QBrush, QColor
 from PyQt5.QtCore import Qt
 
@@ -310,6 +310,7 @@ class Table(QTableWidget):
                 QMessageBox.information(self, "提示", "已取消")
             else:
                 QMessageBox.critical(self, "提示", "失败\n" + str(e))
+            self.progress.reset()
             if sys.platform == 'win32':
                 self.taskbar_progress.resume()
                 self.taskbar_progress.reset()
@@ -340,9 +341,6 @@ class Table(QTableWidget):
             
             for testname_item in pin_map.items():
                 if self.progress.wasCanceled():
-                    if sys.platform == 'win32':
-                        self.taskbar_progress.resume()
-                        self.taskbar_progress.reset()
                     self.setRowCount(0)
                     self.setColumnCount(0)
                     raise Exception('user canceled')
@@ -390,24 +388,14 @@ class Table(QTableWidget):
                 compare_testname_dict = compare_dict.get(testname)
                 if not compare_testname_dict:
                     if self.progress.wasCanceled():
-                        if sys.platform == 'win32':
-                            self.taskbar_progress.resume()
-                            self.taskbar_progress.reset()
                         self.setRowCount(0)
                         self.setColumnCount(0)
                         raise Exception('user canceled')
-                    done += len(chip_dict)
-                    self.progress.setValue(done)
-                    if sys.platform == 'win32':
-                        self.taskbar_progress.setValue(done)
                     continue
                 row = 2
                 max_w = 0
                 for compare_chip_item in compare_testname_dict.items():
                     if self.progress.wasCanceled():
-                        if sys.platform == 'win32':
-                            self.taskbar_progress.resume()
-                            self.taskbar_progress.reset()
                         self.setRowCount(0)
                         self.setColumnCount(0)
                         raise Exception('user canceled')
@@ -416,9 +404,6 @@ class Table(QTableWidget):
                     current_h = 0
                     for pin_item in pin_dict.items():
                         if self.progress.wasCanceled():
-                            if sys.platform == 'win32':
-                                self.taskbar_progress.resume()
-                                self.taskbar_progress.reset()
                             self.setRowCount(0)
                             self.setColumnCount(0)
                             raise Exception('user canceled')
@@ -479,6 +464,7 @@ class Table(QTableWidget):
                 QMessageBox.information(self, "提示", "已取消")
             else:
                 QMessageBox.critical(self, "提示", "失败\n" + str(e))
+            self.progress.reset()
             if sys.platform == 'win32':
                 self.taskbar_progress.resume()
                 self.taskbar_progress.reset()
@@ -488,7 +474,8 @@ class Table(QTableWidget):
         if sys.platform == 'win32':
             self.taskbar_progress.resume()
             self.taskbar_progress.reset()
-        self.show()
+        if self.rowCount() != 0 and self.columnCount() != 0:
+            self.show()
 
     def getTableItem(self, text, alignment=Qt.AlignHCenter|Qt.AlignVCenter):
         item = QTableWidgetItem(str(text))
@@ -537,6 +524,7 @@ class Table(QTableWidget):
                 QMessageBox.information(self, "提示", "已取消")
             else:
                 QMessageBox.critical(self, "提示", "失败\n" + str(e))
+            self.progress.reset()
             if sys.platform == 'win32':
                 self.taskbar_progress.resume()
                 self.taskbar_progress.reset()
