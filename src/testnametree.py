@@ -20,7 +20,8 @@ import resource
 import util
 from formatdialog import FormatDialog
 
-TEST_NAME_PIN_REGEX = r'\ (.{11})(.{6})(.{9})(.{26})(.{11})(.{10})((.{15}){4})(.{3})\s+'
+BEGIN_REGEX = r'\ (Number[^A-Z]*)(Site[^A-Z]*)(Result[^A-Z]*)(Test\ Name[^A-Z]*)(Pin[^A-Z]*)(Channel[^A-Z]*)(Low[^A-Z]*)(Measured[^A-Z]*)(High[^A-Z]*)(Force[^A-Z]*)(Loc[^A-Z]*)\n'
+TEST_NAME_PIN_REGEX = r'\ (.{11})(.{6})(.{9})(.{26})(.{12})(.{10})(.{15})(.{15})(.{15})(.{15})(.{3})\s+'
 
 class TreeNode(object):
     """docstring for TreeNode"""
@@ -74,8 +75,8 @@ class TestNameTree(QWidget):
         self.tree_iterator = None
         self.tree_item_count = 0
         self.pin_map = None
-        self.regex = None
-        self.begin_regex = None
+        self.begin_regex = BEGIN_REGEX
+        self.regex = TEST_NAME_PIN_REGEX
         # self.setMinimumHeight(800)
         # self.resize(908, 600)
         # self.setMinimumSize(908, 600)
