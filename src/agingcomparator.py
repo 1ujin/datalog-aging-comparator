@@ -327,6 +327,20 @@ class AgingComparator(QMainWindow):
             else:
                 QMessageBox.critical(self, "提示", "失败\n" + str(e))
 
+    def closeEvent(self, event):
+        """ 重写关闭事件 """
+        # 退出消息窗，默认取消
+        quit_msgbox = QMessageBox(QMessageBox.Question, "退出程序", "确认退出?")
+        quit_msgbox.setWindowIcon(self.logo)
+        quit_yes_btn = quit_msgbox.addButton("退出(&Y)", QMessageBox.YesRole)
+        quit_no_btn = quit_msgbox.addButton("取消(&N)", QMessageBox.NoRole)
+        quit_msgbox.setDefaultButton(quit_no_btn)
+        quit_reply = int(quit_msgbox.exec())
+        if quit_reply:
+            event.ignore()
+        else:
+            event.accept()
+
 
 if __name__ == "__main__":
     """ 主方法 """
