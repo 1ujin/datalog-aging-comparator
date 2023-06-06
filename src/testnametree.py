@@ -266,7 +266,6 @@ class TestNameTree(QWidget):
                             raise Exception('%s上限必须为数字' % testname)
                 it.__iadd__(1)
         except Exception as e:
-            print(e)
             raise e
         return pin_map
 

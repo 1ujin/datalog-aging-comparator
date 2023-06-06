@@ -117,7 +117,7 @@ class TestPinTable(QWidget):
                         else:
                             raise Exception('%s上限必须为数字' % testname)
         except Exception as e:
-            print(e)
+            raise e
         return pin_map
 
 if __name__ == "__main__":

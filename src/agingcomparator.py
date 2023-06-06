@@ -242,6 +242,7 @@ class AgingComparator(QMainWindow):
                 self.switchToTable()
         except Exception as e:
             print(e)
+            QMessageBox.warning(self, "提示", str(e))
 
     def switchToTable(self):
         self.compare_btn.hide()
@@ -268,6 +269,7 @@ class AgingComparator(QMainWindow):
             self.switchCompareButtion()
         except Exception as e:
             print(e)
+            QMessageBox.warning(self, "提示", str(e))
 
     def getPinMap(self):
         if self.testname_tree == None:
