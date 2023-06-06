@@ -142,7 +142,7 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
 def isnumber(text):
     if not text and len(text) == 0:
         return False
-    if text[0] == '-':
+    if text[0] == '-' or text[0] == '+':
         text = text[1:]
     vals = text.split('.')
     if len(vals) > 2:
