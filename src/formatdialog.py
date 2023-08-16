@@ -12,15 +12,23 @@ import os
 import re
 import sys
 from collections import OrderedDict
-from PyQt5.QtWidgets import QApplication, QDialog, QFormLayout, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QSpinBox, QPushButton, QMessageBox, QGroupBox, QFileDialog
+from PyQt5.QtWidgets import QApplication, QDialog, QFormLayout, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QSpinBox, QPushButton, QMessageBox, QGroupBox, QFileDialog, QCheckBox
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 
 import resource
 
+REQUIRED = [3, 4, 6, 7, 8, 9]
 COLUMN_NAME = ['Number', 'Site', 'Result', r'Test\ Name', 'Pin', 'Channel', 'Low', 'Measured', 'High', 'Force', 'Loc']
-BEGIN_REGEX = r'\ (%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)(%s[^A-Z]*)\n'
-TEST_NAME_PIN_REGEX = r'\ (.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})(.{%d})\s+'
+BEGIN_REGEX = r'\ '
+TEST_NAME_PIN_REGEX = r'\ '
+for i in range(len(COLUMN_NAME)):
+    BEGIN_REGEX += r'(%s[^A-Z]*)'
+    if i not in REQUIRED:
+        BEGIN_REGEX += '?'
+    TEST_NAME_PIN_REGEX += r'(.{%d})'
+BEGIN_REGEX += r'\n'
+TEST_NAME_PIN_REGEX += r'\s+'
 
 class FormatDialog(QDialog):
     """docstring for FormatDialog"""
@@ -46,7 +54,8 @@ class FormatDialog(QDialog):
             QLabel { height: 28px;  font-family: \"微软雅黑\"; font-size: 18px; } \
             QGroupBox { font-family: \"微软雅黑\" } \
             QSpinBox { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
-            QLineEdit { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; }')
+            QLineEdit { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
+            QCheckBox { margin: 0px; padding: 0px; font-family: \"微软雅黑\"; font-size: 18px; }')
         self.initUI()
 
     def initUI(self):
@@ -66,9 +75,18 @@ class FormatDialog(QDialog):
         # form_layout.addRow(QLabel('请填写 Data Log 每列数据的宽度', alignment=Qt.AlignHCenter))
         for idx, pair in enumerate(zip(COLUMN_NAME, self.column_width)):
             name = pair[0].replace('\\', '')
-            lbl = QLabel(name)
+            # lbl = QLabel(name)
+            row = QHBoxLayout()
+            checkbox = QCheckBox(name, self)
+            checkbox.setCheckState(Qt.Checked)
+            row.addWidget(checkbox)
+            row.setContentsMargins(0, 0, 0, 0)
             spin = QSpinBox(parent=self, maximum=50, minimum=len(name), value=pair[1])
-            form_layout.addRow(name, spin)
+            row.addWidget(spin)
+            form_layout.addRow(row)
+        for idx, cb in enumerate(self.findChildren(QCheckBox)):
+            if idx in REQUIRED:
+                cb.setDisabled(True)
         group2 = QGroupBox('请确认并调整 Data Log 每列数据的宽度', self)
         group2.setLayout(form_layout)
         
@@ -107,8 +125,12 @@ class FormatDialog(QDialog):
                 matcher = re.match(self.begin_regex, line)
                 if matcher:
                     groups = matcher.groups()
-                    for (x, y) in zip(self.findChildren(QSpinBox), groups):
-                        x.setValue(len(y))
+                    for (x, y, z) in zip(self.findChildren(QSpinBox), self.findChildren(QCheckBox), groups):
+                        if z != None:
+                            x.setValue(len(z))
+                            y.setCheckState(Qt.Checked)
+                        else:
+                            y.setCheckState(Qt.Unchecked)
                     break
                 line = f.readline()
 
@@ -127,7 +149,12 @@ class FormatDialog(QDialog):
         self.close()
 
     def getRegex(self):
-        self.column_width = [x.value() for x in self.findChildren(QSpinBox)]
+        self.column_width = list()
+        for (x, y) in zip(self.findChildren(QSpinBox), self.findChildren(QCheckBox)):
+            if y.checkState() == Qt.Unchecked:
+                self.column_width.append(0)
+            else:
+                self.column_width.append(x.value())
         regex = TEST_NAME_PIN_REGEX % (*self.column_width, )
         return regex
 
