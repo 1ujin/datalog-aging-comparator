@@ -206,7 +206,9 @@ class Table(QTableWidget):
                                 compare_chip_dict[pinname] = OrderedDict()
                             compare_pin_dict = compare_chip_dict.get(pinname)
                             val = group[7].strip()
-                            if val.find('n') > -1:
+                            if val.find('p') > -1:
+                                val = Decimal(val.split(' ')[0]) / 1000 / 1000
+                            elif val.find('n') > -1:
                                 val = Decimal(val.split(' ')[0]) / 1000
                             elif val.find('u') > -1:
                                 val = Decimal(val.split(' ')[0])
@@ -260,7 +262,9 @@ class Table(QTableWidget):
                                     compare_chip_dict[pinname] = OrderedDict()
                                 compare_pin_dict = compare_chip_dict.get(pinname)
                                 val = group[7].strip()
-                                if val.find('n') > -1:
+                                if val.find('p') > -1:
+                                    val = Decimal(val.split(' ')[0]) / 1000 / 1000
+                                elif val.find('n') > -1:
                                     val = Decimal(val.split(' ')[0]) / 1000
                                 elif val.find('u') > -1:
                                     val = Decimal(val.split(' ')[0])
