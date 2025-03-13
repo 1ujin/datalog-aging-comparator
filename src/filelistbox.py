@@ -12,7 +12,7 @@ import os
 import re
 import sys
 from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction, QTableWidget, QTableWidgetItem, QMessageBox
-from PyQt5.QtGui import QIcon, QPixmap, QCursor, QBrush, QColor
+from PyQt5.QtGui import QIcon, QPixmap, QCursor, QBrush, QColor, QTransform
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize
 
 import resource
@@ -75,15 +75,20 @@ class FileListBox(QWidget):
         self.file_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
         self.file_list.hide()
 
-        expand_btn = QPushButton(self)
-        expand_btn.setToolTip('展开所有文件夹并剔除文件')
-        expand_btn.clicked.connect(self.expandAllFile)
-        # expand_btn.setStyleSheet('height: 70px; width: 12px;')
-        expand_btn.setStyleSheet('height: 18px; width: 100px;')
-        expand_btn.setIconSize(QSize(18, 18))
-        expand_btn.setIcon(QIcon(':/images/expand.png'))
+        self.expand_btn = QPushButton(self)
+        self.expand_btn.setToolTip('展开所有文件夹并剔除文件')
+        self.expand_btn.clicked.connect(self.expandAllFile)
+        # self.expand_btn.setStyleSheet('height: 70px; width: 12px;')
+        self.expand_btn.setStyleSheet('height: 18px; width: 100px;')
+        self.expand_btn.setIconSize(QSize(18, 18))
+        pixmap = QPixmap(':/images/expand.png')
+        transform = QTransform()
+        transform.rotate(180)
+        pixmap = pixmap.transformed(transform)
+        self.expand_btn.setIcon(QIcon(pixmap))
+
         file_btn_layout = QVBoxLayout()
-        file_btn_layout.addWidget(expand_btn, alignment=Qt.AlignHCenter)
+        file_btn_layout.addWidget(self.expand_btn, alignment=Qt.AlignHCenter)
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 0, 0)
@@ -137,6 +142,16 @@ class FileListBox(QWidget):
         self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
     def expandAllFile(self):
+        if not self.file_list.isHidden():
+            icon = self.expand_btn.icon()
+            pixmap = icon.pixmap(self.expand_btn.iconSize())
+            transform = QTransform()
+            transform.rotate(180)
+            pixmap = pixmap.transformed(transform)
+            icon.addPixmap(pixmap)
+            self.expand_btn.setIcon(icon)
+            self.file_list.hide()
+            return
         if self.folder_list.count() == 0:
             return
         path_set = set()
@@ -153,6 +168,13 @@ class FileListBox(QWidget):
         for path in path_list:
             if os.path.splitext(path)[1].lower() == '.txt':
                 QListWidgetItem(path, self.file_list)
+        icon = self.expand_btn.icon()
+        pixmap = icon.pixmap(self.expand_btn.iconSize())
+        transform = QTransform()
+        transform.rotate(180)
+        pixmap = pixmap.transformed(transform)
+        icon.addPixmap(pixmap)
+        self.expand_btn.setIcon(icon)
         self.file_list.show()
         self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
 
