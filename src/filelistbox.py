@@ -7,24 +7,22 @@
 @Desc   : 文件夹文件选择列表框组件
 """
 
-import pdb
 import os
-import re
 import sys
-from PyQt5.QtWidgets import QApplication, QTabWidget, QWidget, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyleFactory, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction, QTableWidget, QTableWidgetItem, QMessageBox
-from PyQt5.QtGui import QIcon, QPixmap, QCursor, QBrush, QColor, QTransform
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyleFactory, QListWidget, \
+    QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction
+from PyQt5.QtGui import QIcon, QPixmap, QCursor, QTransform
 from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize
 
-import resource
-import util
-from table import Table
+import resource  # pylint: disable=unused-import
 
 MIN_SIZE = -sys.maxsize - 1
 
+
 class FileListBox(QWidget):
     """docstring for FileListBox"""
-    
-    Signal_Row_Count = pyqtSignal(int)
+
+    signal_row_count = pyqtSignal(int)
 
     def __init__(self, parent=None):
         super(FileListBox, self).__init__()
@@ -36,29 +34,29 @@ class FileListBox(QWidget):
         # self.resize(908, 600)
         # self.setMinimumSize(908, 600)
         self.setWindowTitle("文件夹文件选择列表")
-        self.logo = QIcon(QPixmap(':/images/logo.png').copy(2, 0, 50, 50))
+        self.logo = QIcon(QPixmap(":/images/logo.png").copy(2, 0, 50, 50))
         self.setWindowIcon(self.logo)
-        self.setStyleSheet('\
+        self.setStyleSheet("\
             QPushButton { font-family: \"微软雅黑\"; } \
-            QListWidget { font-family: \"微软雅黑\"; font-size: 18px; }')
-        self.initUI()
+            QListWidget { font-family: \"微软雅黑\"; font-size: 18px; }")
+        self.init_ui()
 
-    def initUI(self):
+    def init_ui(self):
         self.folder_list = QListWidget(self)
         self.folder_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.folder_list.itemDoubleClicked.connect(lambda item: self.open(item.text()))
         self.folder_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.folder_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
+        self.folder_list.customContextMenuRequested[QPoint].connect(self.list_context_menu_event)
 
-        folder_btn = QPushButton('添加路径', self)
-        folder_btn.clicked.connect(self.openDir)
-        file_btn = QPushButton('添加文件', self)
-        file_btn.clicked.connect(self.openFile)
-        del_btn = QPushButton('删除', self)
-        del_btn.clicked.connect(self.deletePath)
-        clr_btn = QPushButton('清空', self)
-        clr_btn.clicked.connect(self.clearPath)
-        
+        folder_btn = QPushButton("添加路径", self)
+        folder_btn.clicked.connect(self.open_dir)
+        file_btn = QPushButton("添加文件", self)
+        file_btn.clicked.connect(self.open_file)
+        del_btn = QPushButton("删除", self)
+        del_btn.clicked.connect(self.delete_path)
+        clr_btn = QPushButton("清空", self)
+        clr_btn.clicked.connect(self.clear_path)
+
         folder_btn_layout = QHBoxLayout()
         folder_btn_layout.addWidget(folder_btn)
         folder_btn_layout.addWidget(file_btn)
@@ -72,16 +70,16 @@ class FileListBox(QWidget):
         self.file_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.file_list.itemDoubleClicked.connect(lambda item: self.open(item.text()))
         self.file_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.file_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
+        self.file_list.customContextMenuRequested[QPoint].connect(self.list_context_menu_event)
         self.file_list.hide()
 
         self.expand_btn = QPushButton(self)
-        self.expand_btn.setToolTip('展开所有文件夹并剔除文件')
-        self.expand_btn.clicked.connect(self.expandAllFile)
-        # self.expand_btn.setStyleSheet('height: 70px; width: 12px;')
-        self.expand_btn.setStyleSheet('height: 18px; width: 100px;')
+        self.expand_btn.setToolTip("展开所有文件夹并剔除文件")
+        self.expand_btn.clicked.connect(self.expand_all_file)
+        # self.expand_btn.setStyleSheet("height: 70px; width: 12px;")
+        self.expand_btn.setStyleSheet("height: 18px; width: 100px;")
         self.expand_btn.setIconSize(QSize(18, 18))
-        pixmap = QPixmap(':/images/expand.png')
+        pixmap = QPixmap(":/images/expand.png")
         transform = QTransform()
         transform.rotate(180)
         pixmap = pixmap.transformed(transform)
@@ -89,7 +87,7 @@ class FileListBox(QWidget):
 
         file_btn_layout = QVBoxLayout()
         file_btn_layout.addWidget(self.expand_btn, alignment=Qt.AlignHCenter)
-        
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 0, 0)
         folder_btn_layout.setContentsMargins(0, 0, 0, 0)
@@ -98,28 +96,29 @@ class FileListBox(QWidget):
         layout.addLayout(file_btn_layout)
         layout.addWidget(self.file_list, stretch=3)
 
-    def openDir(self):
+    def open_dir(self):
         """ 打开选择路径对话框 """
-        dir_name = QFileDialog.getExistingDirectory(self, '选择路径')
-        if dir_name == '':
+        dir_name = QFileDialog.getExistingDirectory(self, "选择路径")
+        if dir_name == "":
             return
         if dir_name not in self.dir_set:
             self.dir_set.add(dir_name)
             QListWidgetItem(dir_name, self.folder_list)
-        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
+        self.signal_row_count.emit(self.folder_list.count() + self.file_list.count())
 
-    def openFile(self):
+    def open_file(self):
         """ 打开文件多选对话框 """
-        file_list = set(QFileDialog.getOpenFileNames(self, '选择文件', filter='All Files (*.*);;Text Files (*.txt)', initialFilter='Text Files (*.txt)')[0])
+        file_list = set(QFileDialog.getOpenFileNames(self, "选择文件", filter="All Files (*.*);;Text Files (*.txt)",
+                                                     initialFilter="Text Files (*.txt)")[0])
         if len(file_list) == 0:
             return
         for file in file_list:
             if file not in self.file_set:
                 self.file_set.add(file)
                 QListWidgetItem(file, self.folder_list)
-        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
+        self.signal_row_count.emit(self.folder_list.count() + self.file_list.count())
 
-    def deletePath(self):
+    def delete_path(self):
         """ 删除所选的路径 """
         for item in self.file_list.selectedItems():
             self.file_list.takeItem(self.file_list.row(item))
@@ -129,9 +128,9 @@ class FileListBox(QWidget):
                 self.dir_set.discard(text)
                 self.file_set.discard(text)
             self.folder_list.takeItem(self.folder_list.row(item))
-        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
+        self.signal_row_count.emit(self.folder_list.count() + self.file_list.count())
 
-    def clearPath(self):
+    def clear_path(self):
         """ 清空所有路径 """
         self.dir_set.clear()
         self.file_set.clear()
@@ -139,9 +138,9 @@ class FileListBox(QWidget):
         self.file_list.clear()
         self.file_list.hide()
         # self.table.hide()
-        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
+        self.signal_row_count.emit(self.folder_list.count() + self.file_list.count())
 
-    def expandAllFile(self):
+    def expand_all_file(self):
         if not self.file_list.isHidden():
             icon = self.expand_btn.icon()
             pixmap = icon.pixmap(self.expand_btn.iconSize())
@@ -159,14 +158,14 @@ class FileListBox(QWidget):
             path_set.add(self.file_list.item(row).text())
         path_set.update(self.file_set)
         for folder in self.dir_set:
-            for root, dirs, files in os.walk(folder, topdown=False):
+            for root, _, files in os.walk(folder, topdown=False):
                 for name in files:
-                    path_set.add(os.path.join(root, name).replace('\\', '/'))
+                    path_set.add(os.path.join(root, name).replace("\\", "/"))
         path_list = list(path_set)
         path_list.sort(key=lambda x: os.path.basename(x) + os.path.dirname(x))
         self.file_list.clear()
         for path in path_list:
-            if os.path.splitext(path)[1].lower() == '.txt':
+            if os.path.splitext(path)[1].lower() == ".txt":
                 QListWidgetItem(path, self.file_list)
         icon = self.expand_btn.icon()
         pixmap = icon.pixmap(self.expand_btn.iconSize())
@@ -176,17 +175,17 @@ class FileListBox(QWidget):
         icon.addPixmap(pixmap)
         self.expand_btn.setIcon(icon)
         self.file_list.show()
-        self.Signal_Row_Count.emit(self.folder_list.count() + self.file_list.count())
+        self.signal_row_count.emit(self.folder_list.count() + self.file_list.count())
 
-    def getPathList(self):
+    def get_path_list(self):
         path_list = list()
         if self.file_list.count() == 0:
             path_set = set()
             path_set.update(self.file_set)
             for folder in self.dir_set:
-                for root, dirs, files in os.walk(folder, topdown=False):
+                for root, _, files in os.walk(folder, topdown=False):
                     for name in files:
-                        path_set.add(os.path.join(root, name).replace('\\', '/'))
+                        path_set.add(os.path.join(root, name).replace("\\", "/"))
             path_list.extend(path_set)
         else:
             for row in range(0, self.file_list.count()):
@@ -194,17 +193,18 @@ class FileListBox(QWidget):
         path_list.sort()
         return path_list
 
-    def open(self, path):
+    @staticmethod
+    def open(path):
         if os.path.exists(path):
-            if sys.platform == 'win32':
+            if sys.platform == "win32":
                 os.startfile(path)
-            elif sys.platform == 'linux':
-                os.system('xdg-open ' + path)
+            elif sys.platform == "linux":
+                os.system("xdg-open " + path)
 
-    def listContextMenuEvent(self, pos):
-        sender = self.sender()
-        hitIndex = sender.indexAt(pos).row()
-        if hitIndex > -1:
+    def list_context_menu_event(self, pos):
+        sender: QListWidget = self.sender()
+        hit_index = sender.indexAt(pos).row()
+        if hit_index > -1:
             path = sender.currentItem().text()
             menu = QMenu(sender)
             open_file_action = QAction("打开", menu)
@@ -217,14 +217,13 @@ class FileListBox(QWidget):
             copy_action.triggered.connect(lambda: self.clipboard.setText(path))
             menu.addAction(copy_action)
             del_action = QAction("删除", menu)
-            del_action.triggered.connect(lambda: self.deletePath())
+            del_action.triggered.connect(self.delete_path)
             menu.addAction(del_action)
             menu.exec_(QCursor.pos())
 
 
 if __name__ == "__main__":
-    """ 主方法 """
-    QApplication.setStyle(QStyleFactory.create('Fusion'))
+    QApplication.setStyle(QStyleFactory.create("Fusion"))
     app = QApplication(sys.argv)
     __box = FileListBox()
     __box.show()

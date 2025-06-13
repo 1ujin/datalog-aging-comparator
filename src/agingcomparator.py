@@ -7,23 +7,26 @@
 @Desc   : 老炼前后数据比较器
 """
 
-import pdb
 import ctypes
 import os
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QMessageBox, QSizePolicy, QStyleFactory, QGridLayout, QPlainTextEdit, QSpacerItem, QSplitter
-from PyQt5.QtGui import QIcon, QFont, QPixmap
-from PyQt5.QtCore import QSize, QRect, QPropertyAnimation, QSequentialAnimationGroup
-if sys.platform == 'win32':
-    from PyQt5.QtWinExtras import QWinTaskbarButton
+import traceback
 
-import resource
-import util
+import resource  # pylint: disable=unused-import
 from testnametree import TestNameTree
 from filelistbox import FileListBox
 from movablepushbutton import MovablePushButton
 from table import Table
 from testpintable import TestPinTable
+
+from PyQt5.QtCore import QSize, QRect, QPropertyAnimation, QSequentialAnimationGroup
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, \
+    QMessageBox, QSizePolicy, QStyleFactory, QGridLayout, QSpacerItem, QSplitter
+
+if sys.platform == "win32":
+    from PyQt5.QtWinExtras import QWinTaskbarButton
+
 
 class AgingComparator(QMainWindow):
     """docstring for TestNameTree
@@ -38,9 +41,9 @@ class AgingComparator(QMainWindow):
         # self.resize(908, 600)
         # self.setMinimumSize(908, 600)
         self.setWindowTitle("Data Log 老炼前后数据比较工具（适用于J750EX-HD）")
-        self.logo = QIcon(QPixmap(':/images/logo.png').copy(2, 0, 50, 50))
+        self.logo = QIcon(QPixmap(":/images/logo.png").copy(2, 0, 50, 50))
         self.setWindowIcon(self.logo)
-        self.setStyleSheet('\
+        self.setStyleSheet("\
             QPushButton { font-family: \"微软雅黑\"; } \
             QLabel { height: 28px;  font-family: \"微软雅黑\" } \
             QToolBoxButton { min-width: 150px; min-height: 30px; font-size: 28 } \
@@ -51,56 +54,56 @@ class AgingComparator(QMainWindow):
             QGroupBox { font-family: \"微软雅黑\" } \
             QListWidget { font-family: \"微软雅黑\"; font-size: 18px; } \
             QCheckBox { height: 28px; font-family: \"微软雅黑\"; margin-left: 10px; } \
-            QPlainTextEdit { font-family: \"微软雅黑\"; font-size: 18px; }')
-        self.initUI()
+            QPlainTextEdit { font-family: \"微软雅黑\"; font-size: 18px; }")
+        self.init_ui()
 
-    def showEvent(self, event):
+    def showEvent(self, event):  # pylint: disable=unused-argument,invalid-name
         self.taskbar_progress = None
-        if sys.platform == 'win32':
+        if sys.platform == "win32":
             self.taskbar_button = QWinTaskbarButton(self)
             self.taskbar_progress = self.taskbar_button.progress()
             self.taskbar_progress.show()
             self.taskbar_button.setWindow(self.windowHandle())
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event):  # pylint: disable=invalid-name
         if self.compare_btn.isVisible():
             self.compare_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
         if self.excel_btn.isVisible():
             self.excel_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
         super(AgingComparator, self).resizeEvent(event)
 
-    def initUI(self):
+    def init_ui(self):
         splitter = QSplitter(self)
         splitter.setChildrenCollapsible(False)
-        splitter.setStyleSheet('QSplitter { margin: 11px }')
-        
+        splitter.setStyleSheet("QSplitter { margin: 11px }")
+
         self.tab = QTabWidget(splitter)
         self.testname_tree = TestNameTree(self.tab)
-        self.testname_tree.Signal_Has_Checked.connect(self.switchCompareButtion)
-        self.tab.setStyleSheet('QTabWidget:pane { padding: 0px; }')
+        self.testname_tree.signal_has_checked.connect(self.switch_compare_button)
+        self.tab.setStyleSheet("QTabWidget:pane { padding: 0px; }")
         self.tab.setTabPosition(QTabWidget.West)
-        self.tab.addTab(self.testname_tree, '导入测试项')
+        self.tab.addTab(self.testname_tree, "导入测试项")
         # self.text_edit = QPlainTextEdit(self)
         # self.text_edit.textChanged.connect(self.textChangedHandle)
         # self.text_edit.setPlaceholderText('请输入要对比的测试项名称，以逗号隔开，例：\n测试项A Pin1，测试项A Pin2，测试项B Pin3')
         # self.text_edit.setFont(QFont('微软雅黑', 10))
         # self.tab.addTab(self.text_edit, '手动填写测试项')
         self.test_pin_table = TestPinTable(self.tab)
-        self.test_pin_table.table.cellChanged.connect(self.testPinTableChangedHandle)
-        self.tab.addTab(self.test_pin_table, '手动填写测试项')
-        self.tab.currentChanged.connect(lambda _: self.switchCompareButtion())
+        self.test_pin_table.table.cellChanged.connect(self.test_pin_table_changed_handle)
+        self.tab.addTab(self.test_pin_table, "手动填写测试项")
+        self.tab.currentChanged.connect(lambda _: self.switch_compare_button())
 
         self.file_list_before_aging = FileListBox(self)
-        self.file_list_before_aging.Signal_Row_Count.connect(self.switchCompareButtion)
+        self.file_list_before_aging.signal_row_count.connect(self.switch_compare_button)
         self.file_list_after_aging = FileListBox(self)
-        self.file_list_after_aging.Signal_Row_Count.connect(self.switchCompareButtion)
+        self.file_list_after_aging.signal_row_count.connect(self.switch_compare_button)
 
         self.compare_btn = MovablePushButton(self)
-        self.compare_btn.setToolTip('对比并展示表格')
+        self.compare_btn.setToolTip("对比并展示表格")
         self.compare_btn.setIconSize(QSize(32, 32))
-        self.compare_btn.setIcon(QIcon(':/images/export-excel2.png'))
-        self.compare_btn.setIcon(QIcon(':/images/compare.png'))
-        self.compare_btn.setStyleSheet('\
+        self.compare_btn.setIcon(QIcon(":/images/export-excel2.png"))
+        self.compare_btn.setIcon(QIcon(":/images/compare.png"))
+        self.compare_btn.setStyleSheet("\
             QPushButton { \
                 border-radius: 35px; \
                 width: 70px; \
@@ -112,15 +115,15 @@ class AgingComparator(QMainWindow):
             } \
             QPushButton:enabled:pressed { \
                 background-color: green; \
-            }')
-        self.compare_btn.clicked.connect(self.compareDatalog)
+            }")
+        self.compare_btn.clicked.connect(self.compare_datalog)
         self.compare_btn.hide()
 
         self.excel_btn = MovablePushButton(self)
-        self.excel_btn.setToolTip('导出并打开Excel文件')
+        self.excel_btn.setToolTip("导出并打开Excel文件")
         self.excel_btn.setIconSize(QSize(32, 32))
-        self.excel_btn.setIcon(QIcon(':/images/export-excel2.png'))
-        self.excel_btn.setStyleSheet('\
+        self.excel_btn.setIcon(QIcon(":/images/export-excel2.png"))
+        self.excel_btn.setStyleSheet("\
             QPushButton { \
                 border-radius: 35px; \
                 width: 70px; \
@@ -132,13 +135,13 @@ class AgingComparator(QMainWindow):
             } \
             QPushButton:enabled:pressed { \
                 background-color: green; \
-            }')
-        self.excel_btn.clicked.connect(self.exportAndOpenExcel)
+            }")
+        self.excel_btn.clicked.connect(self.export_and_open_excel)
         self.excel_btn.hide()
-        
-        self.geometry_animation = QPropertyAnimation(self.compare_btn, b'geometry')
+
+        self.geometry_animation = QPropertyAnimation(self.compare_btn, b"geometry")
         self.geometry_animation.setDuration(300)
-        self.visible_animation = QPropertyAnimation(self.compare_btn, b'visible')
+        self.visible_animation = QPropertyAnimation(self.compare_btn, b"visible")
         self.visible_animation.setDuration(1)
         self.visible_animation.setStartValue(True)
         self.visible_animation.setEndValue(False)
@@ -150,21 +153,25 @@ class AgingComparator(QMainWindow):
         self.right_layout.addWidget(self.file_list_after_aging, 0, 8, 9, 8)
 
         table_btn_layout = QHBoxLayout()
-        back_btn = QPushButton('返回')
-        back_btn.clicked.connect(self.backToFileList)
-        export_btn = QPushButton('导出')
-        export_btn.clicked.connect(self.exportAndOpenExcel)
+        back_btn = QPushButton("返回")
+        back_btn.clicked.connect(self.back_to_file_list)
+        export_btn = QPushButton("导出")
+        export_btn.clicked.connect(self.export_and_open_excel)
         table_btn_layout.addWidget(back_btn)
         table_btn_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
         table_btn_layout.addWidget(export_btn)
 
-        self.table_layout_widget = QWidget(self)
+        self.table_layout_widget = QWidget(splitter)
         table_layout = QVBoxLayout(self.table_layout_widget)
         table_layout.setContentsMargins(12, 12, 0, 0)
         table_layout.addLayout(table_btn_layout)
         self.table = Table(self)
+        right_tab = QTabWidget(self.table_layout_widget)
+        right_tab.setStyleSheet("QTabWidget:pane { padding: 0px; }")
+        right_tab.setTabPosition(QTabWidget.South)
+        right_tab.addTab(self.table, "Sheet1")
         self.table.hide()
-        table_layout.addWidget(self.table)
+        table_layout.addWidget(right_tab)
         self.right_layout.addWidget(self.table_layout_widget, 0, 0, 9, 16)
         self.table_layout_widget.hide()
 
@@ -175,76 +182,79 @@ class AgingComparator(QMainWindow):
 
         self.setCentralWidget(splitter)
 
-    def switchCompareButtion(self, count=None):
+    def switch_compare_button(self, count=None):
         if self.table_layout_widget.isVisible():
             return
 
-        if count == 0 or self.comparable() == False:
+        if count == 0 or not self.comparable():
             if self.compare_btn.geometry().y() <= self.geometry().height():
                 self.geometry_animation.setStartValue(self.compare_btn.geometry())
-                self.geometry_animation.setEndValue(QRect(self.compare_btn.geometry().x(), self.geometry().height() + 10, 70, 70))
-                
+                self.geometry_animation.setEndValue(
+                    QRect(self.compare_btn.geometry().x(), self.geometry().height() + 10, 70, 70))
+
                 self.animation_group = QSequentialAnimationGroup(self)
                 self.animation_group.addAnimation(self.geometry_animation)
                 self.animation_group.addAnimation(self.visible_animation)
                 self.animation_group.start()
-        
-        elif self.compare_btn.geometry().y() > self.geometry().height() or self.compare_btn.isVisible() == False:
+
+        elif self.compare_btn.geometry().y() > self.geometry().height() or not self.compare_btn.isVisible():
             self.compare_btn.show()
-            self.geometry_animation.setStartValue(QRect(self.geometry().width() - 150, self.geometry().height(), 70, 70))
-            self.geometry_animation.setEndValue(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
+            self.geometry_animation.setStartValue(
+                QRect(self.geometry().width() - 150, self.geometry().height(), 70, 70))
+            self.geometry_animation.setEndValue(
+                QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
             self.geometry_animation.start()
 
     def comparable(self):
-        if self.getBeginRegex() == None or self.getRegex() == None:
+        if self.get_begin_regex() is None or self.get_regex() is None:
             return False
         if self.file_list_before_aging.folder_list.count() + self.file_list_before_aging.file_list.count() == 0:
             return False
         if self.file_list_after_aging.folder_list.count() + self.file_list_after_aging.file_list.count() == 0:
             return False
-        if self.tab.currentIndex() == 0 and not self.testname_tree.isAnySelected():
+        if self.tab.currentIndex() == 0 and not self.testname_tree.is_any_selected():
             return False
-        if self.tab.currentIndex() == 1 and len(self.test_pin_table.getPinMap()) == 0:
+        if self.tab.currentIndex() == 1 and len(self.test_pin_table.get_pin_map()) == 0:
             return False
         if self.tab.currentIndex() > 1:
             return False
         return True
 
-    def compareDatalog(self):
+    def compare_datalog(self):
         try:
             compare_reply = None
-            hasResult = self.table.rowCount() != 0
-            if hasResult:
-                compare_msgbox = QMessageBox(QMessageBox.Question, "查看对比结果", "是否重新对比并生成结果？")
-                compare_msgbox.setWindowIcon(self.logo)
-                quit_yesbtn = compare_msgbox.addButton("重新生成", QMessageBox.YesRole)
-                quit_nobtn = compare_msgbox.addButton("显示上次结果", QMessageBox.NoRole)
-                quit_cancelbtn = compare_msgbox.addButton("取消", QMessageBox.RejectRole)
-                compare_msgbox.setDefaultButton(quit_cancelbtn)
-                compare_reply = compare_msgbox.exec()
+            has_result = self.table.rowCount() != 0
+            if has_result:
+                compare_msg_box = QMessageBox(QMessageBox.Question, "查看对比结果", "是否重新对比并生成结果？")
+                compare_msg_box.setWindowIcon(self.logo)
+                compare_msg_box.addButton("重新生成", QMessageBox.YesRole)
+                compare_msg_box.addButton("显示上次结果", QMessageBox.NoRole)
+                quit_cancel_btn = compare_msg_box.addButton("取消", QMessageBox.RejectRole)
+                compare_msg_box.setDefaultButton(quit_cancel_btn)
+                compare_reply = compare_msg_box.exec()
 
             if compare_reply == 2:
                 return
-            
-            if not hasResult or compare_reply == 0:
+
+            if not has_result or compare_reply == 0:
                 pin_map = None
                 if self.tab.currentIndex() == 0:
-                    pin_map = self.getCheckedPinMap()
+                    pin_map = self.get_checked_pin_map()
                 elif self.tab.currentIndex() == 1:
-                    pin_map = self.test_pin_table.getPinMap()
+                    pin_map = self.test_pin_table.get_pin_map()
                 else:
-                    raise Exception('error tab')
-                before_aging = self.file_list_before_aging.getPathList()
-                after_aging = self.file_list_after_aging.getPathList()
-                self.table.fillTable(before_aging, after_aging, pin_map, self.getRegex(), self.getBeginRegex())
-            
-            if self.table.rowCount() != 0:
-                self.switchToTable()
-        except Exception as e:
-            print(e)
-            QMessageBox.warning(self, "提示", str(e))
+                    raise Exception("error tab")
+                before_aging = self.file_list_before_aging.get_path_list()
+                after_aging = self.file_list_after_aging.get_path_list()
+                self.table.fill_table(before_aging, after_aging, pin_map, self.get_regex(), self.get_begin_regex())
 
-    def switchToTable(self):
+            if self.table.rowCount() != 0:
+                self.switch_to_table()
+        except Exception as e:  # pylint: disable=broad-except
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            QMessageBox.warning(self, "提示", "失败\n" + str(e) + "\n" + str(tb)[19:-1] + "\n" + tb.line)
+
+    def switch_to_table(self):
         self.compare_btn.hide()
         self.file_list_before_aging.hide()
         self.file_list_after_aging.hide()
@@ -252,7 +262,7 @@ class AgingComparator(QMainWindow):
         self.excel_btn.setGeometry(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70)
         self.excel_btn.show()
 
-    def backToFileList(self):
+    def back_to_file_list(self):
         self.excel_btn.hide()
         self.table_layout_widget.hide()
         self.file_list_before_aging.show()
@@ -264,24 +274,24 @@ class AgingComparator(QMainWindow):
     # def textChangedHandle(self):
     #     self.switchCompareButtion(len(self.sender().toPlainText()))
 
-    def testPinTableChangedHandle(self):
+    def test_pin_table_changed_handle(self):
         try:
-            self.switchCompareButtion()
-        except Exception as e:
-            print(e)
-            QMessageBox.warning(self, "提示", str(e))
+            self.switch_compare_button()
+        except Exception as e:  # pylint: disable=broad-except
+            tb = traceback.extract_tb(e.__traceback__)[-1]
+            QMessageBox.warning(self, "提示", "失败\n" + str(e) + "\n" + str(tb)[19:-1] + "\n" + tb.line)
 
-    def getPinMap(self):
-        if self.testname_tree == None:
+    def get_pin_map(self):
+        if self.testname_tree is None:
             return None
         return self.testname_tree.pin_map
 
-    def getCheckedPinMap(self):
-        if self.testname_tree == None:
+    def get_checked_pin_map(self):
+        if self.testname_tree is None:
             return None
-        return self.testname_tree.getCheckedPinMap()
+        return self.testname_tree.get_checked_pin_map()
 
-    def getRegex(self):
+    def get_regex(self):
         if self.tab.currentIndex() == 0:
             return self.testname_tree.regex
         elif self.tab.currentIndex() == 1:
@@ -289,7 +299,7 @@ class AgingComparator(QMainWindow):
         else:
             return None
 
-    def getBeginRegex(self):
+    def get_begin_regex(self):
         if self.tab.currentIndex() == 0:
             return self.testname_tree.begin_regex
         elif self.tab.currentIndex() == 1:
@@ -297,47 +307,47 @@ class AgingComparator(QMainWindow):
         else:
             return None
 
-    def exportExcel(self):
+    def export_excel(self):
         try:
-            return self.table.exportExcel()
-        except Exception as e:
-            print(e)
-            if str(e) == 'user canceled':
+            return self.table.export_excel()
+        except Exception as e:  # pylint: disable=broad-except
+            if str(e) == "user canceled":
                 QMessageBox.information(self, "提示", "已取消")
             else:
-                QMessageBox.critical(self, "提示", "失败\n" + str(e))
+                tb = traceback.extract_tb(e.__traceback__)[-1]
+                QMessageBox.critical(self, "提示", "失败\n" + str(e) + "\n" + str(tb)[19:-1] + "\n" + tb.line)
 
-    def exportAndOpenExcel(self):
+    def export_and_open_excel(self):
         try:
-            filename = self.exportExcel()
+            filename = self.export_excel()
             if filename and os.path.exists(filename):
-                open_msgbox = QMessageBox(QMessageBox.Question, "导出成功", "是否打开导出文件？")
-                open_msgbox.setWindowIcon(self.logo)
-                open_yesbtn = open_msgbox.addButton("打开", QMessageBox.YesRole)
-                open_nobtn = open_msgbox.addButton("取消", QMessageBox.NoRole)
-                open_msgbox.setDefaultButton(open_nobtn)
-                open_reply = open_msgbox.exec()
+                open_msg_box = QMessageBox(QMessageBox.Question, "导出成功", "是否打开导出文件？")
+                open_msg_box.setWindowIcon(self.logo)
+                open_msg_box.addButton("打开", QMessageBox.YesRole)
+                open_no_btn = open_msg_box.addButton("取消", QMessageBox.NoRole)
+                open_msg_box.setDefaultButton(open_no_btn)
+                open_reply = open_msg_box.exec()
                 if open_reply == 0:
-                    if sys.platform == 'win32':
+                    if sys.platform == "win32":
                         os.startfile(filename)
-                    elif sys.platform == 'linux':
-                        os.system('xdg-open ' + filename)
-        except Exception as e:
-            print(e)
-            if str(e) == 'user canceled':
+                    elif sys.platform == "linux":
+                        os.system("xdg-open " + filename)
+        except Exception as e:  # pylint: disable=broad-except
+            if str(e) == "user canceled":
                 QMessageBox.information(self, "提示", "已取消")
             else:
-                QMessageBox.critical(self, "提示", "失败\n" + str(e))
+                tb = traceback.extract_tb(e.__traceback__)[-1]
+                QMessageBox.critical(self, "提示", "失败\n" + str(e) + "\n" + str(tb)[19:-1] + "\n" + tb.line)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event):  # pylint: disable=invalid-name
         """ 重写关闭事件 """
         # 退出消息窗，默认取消
-        quit_msgbox = QMessageBox(QMessageBox.Question, "退出程序", "确认退出?")
-        quit_msgbox.setWindowIcon(self.logo)
-        quit_yes_btn = quit_msgbox.addButton("退出(&Y)", QMessageBox.YesRole)
-        quit_no_btn = quit_msgbox.addButton("取消(&N)", QMessageBox.NoRole)
-        quit_msgbox.setDefaultButton(quit_no_btn)
-        quit_reply = int(quit_msgbox.exec())
+        quit_msg_box = QMessageBox(QMessageBox.Question, "退出程序", "确认退出?")
+        quit_msg_box.setWindowIcon(self.logo)
+        quit_msg_box.addButton("退出(&Y)", QMessageBox.YesRole)
+        quit_no_btn = quit_msg_box.addButton("取消(&N)", QMessageBox.NoRole)
+        quit_msg_box.setDefaultButton(quit_no_btn)
+        quit_reply = int(quit_msg_box.exec())
         if quit_reply:
             event.ignore()
         else:
@@ -345,12 +355,11 @@ class AgingComparator(QMainWindow):
 
 
 if __name__ == "__main__":
-    """ 主方法 """
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("aging_comparator")
-    QApplication.setStyle(QStyleFactory.create('Fusion'))
+    QApplication.setStyle(QStyleFactory.create("Fusion"))
     app = QApplication(sys.argv)
-    __main_mindow = AgingComparator()
-    # __main_mindow.show()
-    __main_mindow.showMaximized()
+    __main_window = AgingComparator()
+    # __main_window.show()
+    __main_window.showMaximized()
     sys.exit(app.exec_())

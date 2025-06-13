@@ -7,19 +7,16 @@
 @Desc   : 工具类
 """
 
-import pdb
 import openpyxl
-import os
-import re
 import sys
-from decimal import Decimal
 
 MIN_SIZE = -sys.maxsize - 1
 
-def exportExcel(table, filename, progress=None, taskbar_progress=None):
+
+def export_excel(table, filename, progress=None, taskbar_progress=None):
     wb = openpyxl.Workbook()
     ws = wb.active
-    
+
     max_row = table.rowCount()
     max_col = table.columnCount()
     total = max_col * max_row
@@ -27,7 +24,7 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
     if progress:
         progress.setRange(0, total)
         progress.setValue(0)
-    if sys.platform == 'win32' and taskbar_progress != None:
+    if sys.platform == "win32" and taskbar_progress is not None:
         taskbar_progress.setRange(0, total)
         taskbar_progress.setValue(0)
 
@@ -38,26 +35,26 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
         max_length = ws.column_dimensions[col_letter].width
         it = iter(range(1, max_row))
         for row in it:
-            if progress != None and progress.wasCanceled():
-                raise Exception('user canceled')
+            if progress is not None and progress.wasCanceled():
+                raise Exception("user canceled")
             item = table.item(row, col)
             if not item:
                 done += 1
-                if progress != None:
+                if progress is not None:
                     progress.setValue(done)
-                if sys.platform == 'win32' and taskbar_progress != None:
+                if sys.platform == "win32" and taskbar_progress is not None:
                     taskbar_progress.setValue(done)
                 continue
             span = table.rowSpan(row, col)
             done += span
             cell = ws.cell(row + 1, col + 1)
             text = item.text().strip()
-            if text[0] == '-':
+            if text[0] == "-":
                 text = text[1:]
             if span > 1:
                 cell.value = item.text().strip()
-            elif text.find('.') > -1:
-                integer, decimal = text.split('.')
+            elif text.find(".") > -1:
+                integer, decimal = text.split(".")
                 if integer.isdigit() and decimal.isdigit():
                     cell.value = float(item.text().strip())
                 else:
@@ -68,18 +65,18 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
                 cell.value = item.text().strip()
             rgb = item.background().color().rgb() % (256 * 256 * 256)
             if rgb != 0:
-                cell.fill = openpyxl.styles.PatternFill(patternType='solid',fgColor=hex(rgb)[2:])
+                cell.fill = openpyxl.styles.PatternFill(patternType="solid", fgColor=hex(rgb)[2:])
             max_length = max(max_length, len(str(cell.value)))
             if span > 1:
-                ws.merge_cells(start_row = row + 1, start_column = col + 1, end_row = row + span, end_column = col + 1)
-                cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='top')
-                for i in range(span - 1):
+                ws.merge_cells(start_row=row + 1, start_column=col + 1, end_row=row + span, end_column=col + 1)
+                cell.alignment = openpyxl.styles.alignment.Alignment(horizontal="center", vertical="top")
+                for _ in range(span - 1):
                     next(it)
             else:
-                cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='center')
-            if progress != None:
+                cell.alignment = openpyxl.styles.alignment.Alignment(horizontal="center", vertical="center")
+            if progress is not None:
                 progress.setValue(done)
-            if sys.platform == 'win32' and taskbar_progress != None:
+            if sys.platform == "win32" and taskbar_progress is not None:
                 taskbar_progress.setValue(done)
         adjusted_width = (max_length + 2) * 1.2
         if adjusted_width > max_length:
@@ -95,16 +92,16 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
     #         continue
     #     cell = ws.cell(row + 1, 1)
     #     cell.value = item.text()
-    #     cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='top')
+    #     cell.alignment = openpyxl.styles.alignment.Alignment(horizontal="center", vertical="top")
     #     ws.merge_cells(start_row = row + 1, start_column = 1, end_row = row + span, end_column = 1)
     #     if span > 1:
     #         for i in range(span - 1):
     #             next(it)
 
     done = total - max_col
-    if progress != None:
+    if progress is not None:
         progress.setValue(done)
-    if sys.platform == 'win32' and taskbar_progress != None:
+    if sys.platform == "win32" and taskbar_progress is not None:
         taskbar_progress.setValue(done)
     # 表头
     for row in range(1):
@@ -113,38 +110,42 @@ def exportExcel(table, filename, progress=None, taskbar_progress=None):
             item = table.item(row, col)
             if not item:
                 done += 1
-                if progress != None:
+                if progress is not None:
                     progress.setValue(done)
-                if sys.platform == 'win32' and taskbar_progress != None:
+                if sys.platform == "win32" and taskbar_progress is not None:
                     taskbar_progress.setValue(done)
                 continue
             span = table.columnSpan(row, col)
             done += span
             cell = ws.cell(row + 1, col + 1)
             cell.value = item.text()
-            cell.alignment = openpyxl.styles.alignment.Alignment(horizontal='center', vertical='center')
-            ws.merge_cells(start_row = row + 1, start_column = col + 1, end_row = row + 1, end_column = col + span)
+            cell.alignment = openpyxl.styles.alignment.Alignment(horizontal="center", vertical="center")
+            ws.merge_cells(start_row=row + 1, start_column=col + 1, end_row=row + 1, end_column=col + span)
             if span > 1:
-                for i in range(span - 1):
+                for _ in range(span - 1):
                     next(it)
-            if progress != None:
+            if progress is not None:
                 progress.setValue(done)
-            if sys.platform == 'win32' and taskbar_progress != None:
+            if sys.platform == "win32" and taskbar_progress is not None:
                 taskbar_progress.setValue(done)
 
-    if progress != None:
+    if progress is not None:
         progress.reset()
-    if sys.platform == 'win32' and taskbar_progress != None:
+    if sys.platform == "win32" and taskbar_progress is not None:
         taskbar_progress.resume()
         taskbar_progress.reset()
+
+    # 冻结前两行和前两列
+    ws.freeze_panes = "C3"
     wb.save(filename)
+
 
 def isnumber(text):
     if not text and len(text) == 0:
         return False
-    if text[0] == '-' or text[0] == '+':
+    if text[0] == "-" or text[0] == "+":
         text = text[1:]
-    vals = text.split('.')
+    vals = text.split(".")
     if len(vals) > 2:
         return False
     for val in vals:

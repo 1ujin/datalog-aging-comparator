@@ -10,49 +10,53 @@
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton
 from PyQt5.QtCore import Qt
 
-class MovablePushButton(QPushButton):
 
-    def mousePressEvent(self, event):
-        self.__mousePressPos = None
-        self.__mouseMovePos = None
+class MovablePushButton(QPushButton):
+    """docstring for MovablePushButton
+    可移动按钮组件
+    """
+
+    def mousePressEvent(self, event):  # pylint: disable=invalid-name
+        self.__mouse_press_pos = None
+        self.__mouse_move_pos = None
         if event.button() == Qt.LeftButton:
-            self.__mousePressPos = event.globalPos()
-            self.__mouseMovePos = event.globalPos()
+            self.__mouse_press_pos = event.globalPos()
+            self.__mouse_move_pos = event.globalPos()
 
         super(MovablePushButton, self).mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event):  # pylint: disable=invalid-name
         if event.buttons() == Qt.LeftButton:
             # adjust offset from clicked point to origin of widget
-            currPos = self.mapToGlobal(self.pos())
-            globalPos = event.globalPos()
-            diff = globalPos - self.__mouseMovePos
+            curr_pos = self.mapToGlobal(self.pos())
+            global_pos = event.globalPos()
+            diff = global_pos - self.__mouse_move_pos
             if diff.manhattanLength() < 20:
                 event.ignore()
                 return
-            newPos = self.mapFromGlobal(currPos + diff)
+            new_pos = self.mapFromGlobal(curr_pos + diff)
             if self.parent():
                 right = self.parent().geometry().width()
                 bottom = self.parent().geometry().height()
-                
-                if newPos.x() < 0:
-                    newPos.setX(0)
-                elif newPos.x() > right - self.width():
-                    newPos.setX(right - self.width())
-                
-                if newPos.y() < 0:
-                    newPos.setY(0)
-                elif newPos.y() > bottom - self.height():
-                    newPos.setY(bottom - self.height())
-                
-                self.move(newPos)
-            self.__mouseMovePos = globalPos
+
+                if new_pos.x() < 0:
+                    new_pos.setX(0)
+                elif new_pos.x() > right - self.width():
+                    new_pos.setX(right - self.width())
+
+                if new_pos.y() < 0:
+                    new_pos.setY(0)
+                elif new_pos.y() > bottom - self.height():
+                    new_pos.setY(bottom - self.height())
+
+                self.move(new_pos)
+            self.__mouse_move_pos = global_pos
 
         super(MovablePushButton, self).mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
-        if self.__mousePressPos is not None:
-            moved = event.globalPos() - self.__mousePressPos 
+    def mouseReleaseEvent(self, event):  # pylint: disable=invalid-name
+        if self.__mouse_press_pos is not None:
+            moved = event.globalPos() - self.__mouse_press_pos
             if moved.manhattanLength() > 3:
                 event.ignore()
                 self.setDown(False)
@@ -60,13 +64,15 @@ class MovablePushButton(QPushButton):
 
         super(MovablePushButton, self).mouseReleaseEvent(event)
 
+
 def clicked():
     print("click as normal!")
+
 
 if __name__ == "__main__":
     app = QApplication([])
     w = QWidget()
-    w.resize(800,600)
+    w.resize(800, 600)
 
     button = MovablePushButton("Drag", w)
     button.clicked.connect(clicked)

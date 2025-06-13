@@ -7,17 +7,19 @@
 @Desc   : 错误列表对话框
 """
 
-import pdb
 import os
 import sys
-from PyQt5.QtWidgets import QApplication, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QMenu, QAction, QDialog
+from PyQt5.QtWidgets import QApplication, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QListWidget, QListWidgetItem, \
+    QAbstractItemView, QSpacerItem, QSizePolicy, QMenu, QAction, QDialog
 from PyQt5.QtGui import QIcon, QPixmap, QCursor
 from PyQt5.QtCore import Qt, QPoint
 
-import resource
+import resource  # pylint: disable=unused-import
+
 
 class ErrorDialog(QDialog):
     """docstring for ErrorDialog"""
+
     def __init__(self, parent=None):
         super(ErrorDialog, self).__init__()
         self.parent = parent
@@ -27,39 +29,39 @@ class ErrorDialog(QDialog):
         # 设置窗口只有关闭按键
         self.setWindowFlags(Qt.Dialog | Qt.WindowCloseButtonHint)
         self.setWindowTitle("错误")
-        self.logo = QIcon(QPixmap(':/images/logo.png').copy(2, 0, 50, 50))
+        self.logo = QIcon(QPixmap(":/images/logo.png").copy(2, 0, 50, 50))
         self.setWindowIcon(self.logo)
-        self.setStyleSheet('\
+        self.setStyleSheet("\
             QLabel { min-width: 70px;  font-family: \"微软雅黑\"; font-size: 18px; } \
             QPushButton { font-family: \"微软雅黑\"; max-width: 50px; } \
-            QListWidget { font-family: \"微软雅黑\"; font-size: 18px; }')
-        self.initUI()
+            QListWidget { font-family: \"微软雅黑\"; font-size: 18px; }")
+        self.init_ui()
 
-    def initUI(self):
-        self.id_lbl = QLabel('文件名错误', self)
+    def init_ui(self):
+        self.id_lbl = QLabel("文件名错误", self)
         self.id_error_list = QListWidget(self)
         self.id_error_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
-        self.id_error_list.itemDoubleClicked.connect(lambda item: self.openPath(item.text()))
+        self.id_error_list.itemDoubleClicked.connect(lambda item: self.open_path(item.text()))
         self.id_error_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.id_error_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
-        
-        self.duplicate_lbl = QLabel('重复错误', self)
+        self.id_error_list.customContextMenuRequested[QPoint].connect(self.list_context_menu_event)
+
+        self.duplicate_lbl = QLabel("重复错误", self)
         self.duplicate_error_list = QListWidget(self)
         self.duplicate_error_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
-        self.duplicate_error_list.itemDoubleClicked.connect(lambda item: self.openPath(item.text()))
+        self.duplicate_error_list.itemDoubleClicked.connect(lambda item: self.open_path(item.text()))
         self.duplicate_error_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.duplicate_error_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
-        
-        self.temperature_lbl = QLabel('温度错误', self)
+        self.duplicate_error_list.customContextMenuRequested[QPoint].connect(self.list_context_menu_event)
+
+        self.temperature_lbl = QLabel("温度错误", self)
         self.temperature_error_list = QListWidget(self)
         self.temperature_error_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
-        self.temperature_error_list.itemDoubleClicked.connect(lambda item: self.openPath(item.text()))
+        self.temperature_error_list.itemDoubleClicked.connect(lambda item: self.open_path(item.text()))
         self.temperature_error_list.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.temperature_error_list.customContextMenuRequested[QPoint].connect(self.listContextMenuEvent)
+        self.temperature_error_list.customContextMenuRequested[QPoint].connect(self.list_context_menu_event)
 
-        accept_btn = QPushButton('继续', self)
+        accept_btn = QPushButton("继续", self)
         accept_btn.clicked.connect(self.accept)
-        reject_btn = QPushButton('放弃', self)
+        reject_btn = QPushButton("放弃", self)
         reject_btn.clicked.connect(self.reject)
         btn_layout = QHBoxLayout()
         btn_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
@@ -75,38 +77,38 @@ class ErrorDialog(QDialog):
         layout.addWidget(self.temperature_error_list)
         layout.addLayout(btn_layout)
 
-    def fillIdErrorList(self, id_error):
+    def fill_id_error_list(self, id_error):
         for path in id_error:
             QListWidgetItem(path, self.id_error_list)
         if self.id_error_list.count() == 0:
             self.id_lbl.hide()
             self.id_error_list.hide()
 
-    def fillDuplicateErrorList(self, duplicate_error):
+    def fill_duplicate_error_list(self, duplicate_error):
         for path in duplicate_error:
             QListWidgetItem(path, self.duplicate_error_list)
         if self.duplicate_error_list.count() == 0:
             self.duplicate_lbl.hide()
             self.duplicate_error_list.hide()
 
-    def fillTemperatureErrorList(self, temperature_error):
+    def fill_temperature_error_list(self, temperature_error):
         for path in temperature_error:
             QListWidgetItem(path, self.temperature_error_list)
         if self.temperature_error_list.count() == 0:
             self.temperature_lbl.hide()
             self.temperature_error_list.hide()
 
-    def openPath(self, path):
+    def open_path(self, path):
         if os.path.exists(path):
-            if sys.platform == 'win32':
+            if sys.platform == "win32":
                 os.startfile(path)
-            elif sys.platform == 'linux':
-                os.system('xdg-open ' + path)
+            elif sys.platform == "linux":
+                os.system("xdg-open " + path)
 
-    def listContextMenuEvent(self, pos):
-        sender = self.sender()
-        hitIndex = sender.indexAt(pos).row()
-        if hitIndex > -1:
+    def list_context_menu_event(self, pos):
+        sender: QListWidget = self.sender()
+        hit_index = sender.indexAt(pos).row()
+        if hit_index > -1:
             path = sender.currentItem().text()
             menu = QMenu(sender)
             open_file_action = QAction("打开", menu)
@@ -122,7 +124,7 @@ class ErrorDialog(QDialog):
 
     def open(self, path):
         if os.path.exists(path):
-            if sys.platform == 'win32':
+            if sys.platform == "win32":
                 os.startfile(path)
-            elif sys.platform == 'linux':
-                os.system('xdg-open ' + path)
+            elif sys.platform == "linux":
+                os.system("xdg-open " + path)

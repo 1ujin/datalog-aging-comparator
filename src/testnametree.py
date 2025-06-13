@@ -7,21 +7,25 @@
 @Desc   : 测试项树状列表
 """
 
-import pdb
 import re
 import sys
 from collections import OrderedDict
 from decimal import Decimal
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView
+from typing import Optional
+
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, \
+    QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 
-import resource
+import resource  # pylint: disable=unused-import
 import util
 from formatdialog import FormatDialog
 
-BEGIN_REGEX = r'\ (Number[^A-Z]*)(Site[^A-Z]*)(Result[^A-Z]*)(Test\ Name[^A-Z]*)(Pin[^A-Z]*)(Channel[^A-Z]*)(Low[^A-Z]*)(Measured[^A-Z]*)(High[^A-Z]*)(Force[^A-Z]*)(Loc[^A-Z]*)\n'
-TEST_NAME_PIN_REGEX = r'\ (.{11})(.{6})(.{9})(.{26})(.{12})(.{10})(.{15})(.{15})(.{15})(.{15})(.{3})\s+'
+BEGIN_REGEX = r"\ (Number[^A-Z]*)(Site[^A-Z]*)(Result[^A-Z]*)(Test\ Name[^A-Z]*)(Pin[^A-Z]*)(Channel[^A-Z]*)" \
+              r"(Low[^A-Z]*)(Measured[^A-Z]*)(High[^A-Z]*)(Force[^A-Z]*)(Loc[^A-Z]*)\n"
+TEST_NAME_PIN_REGEX = r"\ (.{11})(.{6})(.{9})(.{26})(.{12})(.{10})(.{15})(.{15})(.{15})(.{15})(.{3})\s+"
+
 
 class TreeNode(object):
     """docstring for TreeNode"""
@@ -32,10 +36,10 @@ class TreeNode(object):
         self.children = children
 
     def __str__(self):
-        if self.children == None or len(self.children) == 0:
-            return(f'{{ name: {self.name} }}')
+        if self.children is None or len(self.children) == 0:
+            return f"{{ name: {self.name} }}"
         else:
-            return(f'{{ name: {self.name}, children: {", ".join([str(child) for child in self.children.values()])} }}')
+            return f"{{ name: {self.name}, children: {', '.join([str(child) for child in self.children.values()])} }}"
 
 
 class UneditableDelegate(QStyledItemDelegate):
@@ -44,7 +48,7 @@ class UneditableDelegate(QStyledItemDelegate):
     """
 
     @staticmethod
-    def createEditor(parent, option, index):
+    def createEditor(parent, option, index):  # pylint: disable=unused-argument,invalid-name
         """ 忽略编辑，如果有子节点则折叠 """
         if index.child(0, 0).data() is not None:
             item = parent.parent().topLevelItem(index.row())
@@ -57,7 +61,7 @@ class FullSizedDelegate(QStyledItemDelegate):
     """
 
     @staticmethod
-    def updateEditorGeometry(parent, option, index):
+    def updateEditorGeometry(parent, option, index):  # pylint: disable=unused-argument,invalid-name
         parent.setGeometry(option.rect)
 
 
@@ -66,10 +70,10 @@ class TestNameTree(QWidget):
     测试项树状列表
     """
 
-    Signal_Has_Checked = pyqtSignal(int)
+    signal_has_checked = pyqtSignal(int)
 
     def __init__(self, parent=None):
-        super(QWidget, self).__init__(parent)
+        super(TestNameTree, self).__init__(parent)
         self.parent = parent
         self.tree = QTreeWidget()
         self.tree_iterator = None
@@ -81,9 +85,9 @@ class TestNameTree(QWidget):
         # self.resize(908, 600)
         # self.setMinimumSize(908, 600)
         self.setWindowTitle("测试项树状列表")
-        self.logo = QIcon(QPixmap(':/images/logo.png').copy(2, 0, 50, 50))
+        self.logo = QIcon(QPixmap(":/images/logo.png").copy(2, 0, 50, 50))
         self.setWindowIcon(self.logo)
-        self.setStyleSheet('\
+        self.setStyleSheet("\
             QPushButton { font-family: \"微软雅黑\"; max-width: 50px; } \
             QScrollArea { border: none } \
             QTreeView { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
@@ -93,22 +97,22 @@ class TestNameTree(QWidget):
             QTreeView::branch:has-siblings:adjoins-item { border-image: url(\":/images/branch-more.png\") 0; } \
             QTreeView::branch:!has-children:!has-siblings:adjoins-item { border-image: url(\":/images/branch-end.png\") 0; } \
             QTreeView::branch:closed:has-children { border-image: none; image: url(\":/images/branch-closed.png\"); } \
-            QTreeView::branch:open:has-children { border-image: none; image: url(\":/images/branch-opened.png\"); }')
-        self.initUI()
+            QTreeView::branch:open:has-children { border-image: none; image: url(\":/images/branch-opened.png\"); }")
+        self.init_ui()
 
-    def initUI(self):
-        load_btn = QPushButton('导入', self)
+    def init_ui(self):
+        load_btn = QPushButton("导入", self)
         load_btn.clicked.connect(self.load)
-        select_all_btn = QPushButton('全选', self)
-        select_all_btn.clicked.connect(self.selectAllTreeItem)
-        reverse_selected_btn = QPushButton('反选', self)
-        reverse_selected_btn.clicked.connect(self.reverseSelectedTreeItem)
-        clear_selected_btn = QPushButton('清空', self)
-        clear_selected_btn.clicked.connect(self.clearSelectedTreeItem)
-        expand_btn = QPushButton('展开', self)
-        collapse_btn = QPushButton('折叠', self)
-        search_btn = QPushButton('查找', self)
-        
+        select_all_btn = QPushButton("全选", self)
+        select_all_btn.clicked.connect(self.select_all_tree_item)
+        reverse_selected_btn = QPushButton("反选", self)
+        reverse_selected_btn.clicked.connect(self.reverse_selected_tree_item)
+        clear_selected_btn = QPushButton("清空", self)
+        clear_selected_btn.clicked.connect(self.clear_selected_tree_item)
+        expand_btn = QPushButton("展开", self)
+        collapse_btn = QPushButton("折叠", self)
+        search_btn = QPushButton("查找", self)
+
         btn_layout = QHBoxLayout()
         btn_layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
         btn_layout.addWidget(load_btn)
@@ -122,14 +126,14 @@ class TestNameTree(QWidget):
         # btn_layout.setContentsMargins(0, 0, 0, 0)
 
         search_line_edit = QLineEdit(self)
-        search_line_edit.setStyleSheet('font-size: 18px;')
-        search_line_edit.setPlaceholderText('请输入关键字')
-        search_line_edit.returnPressed.connect(self.searchItemByKeyword)
-        prev_item_btn = QPushButton('上一个', self)
-        prev_item_btn.clicked.connect(lambda: self.searchPreviousItemByKeyword(search_line_edit.text()))
-        next_item_btn = QPushButton('下一个', self)
-        next_item_btn.clicked.connect(lambda: self.searchNextItemByKeyword(search_line_edit.text()))
-        
+        search_line_edit.setStyleSheet("font-size: 18px;")
+        search_line_edit.setPlaceholderText("请输入关键字")
+        search_line_edit.returnPressed.connect(self.search_item_by_keyword)
+        prev_item_btn = QPushButton("上一个", self)
+        prev_item_btn.clicked.connect(lambda: self.search_previous_item_by_keyword(search_line_edit.text()))
+        next_item_btn = QPushButton("下一个", self)
+        next_item_btn.clicked.connect(lambda: self.search_next_item_by_keyword(search_line_edit.text()))
+
         search_layout = QHBoxLayout()
         search_layout.addWidget(search_line_edit)
         search_layout.addWidget(prev_item_btn)
@@ -148,11 +152,10 @@ class TestNameTree(QWidget):
         self.tree = QTreeWidget()
         expand_btn.clicked.connect(self.tree.expandAll)
         collapse_btn.clicked.connect(self.tree.collapseAll)
-        self.tree.itemClicked.connect(self.treeClickedHandle)
+        self.tree.itemClicked.connect(self.tree_clicked_handle)
         self.tree.header().setSectionsMovable(False)
-        self.tree.setHeaderLabels(['Test Name  〉Pin', '下限（uA/uV）', '上限（uA/uV）'])
+        self.tree.setHeaderLabels(["Test Name  〉Pin", "下限（uA/uV）", "上限（uA/uV）"])
         # self.tree.setHeaderHidden(True)
-        # self.tree.addTopLevelItems([self.generateTreeByDfs(top) for top in self.loadTestName('../../data_log_splitter/data/tar/00100.txt').items()])
         # 展开全部
         # self.tree.expandAll()
         # 首列宽度自适应
@@ -176,15 +179,15 @@ class TestNameTree(QWidget):
         # layout.addWidget(line)
         layout.addWidget(self.tree)
         self.setLayout(layout)
-    
+
     def load(self):
         """ 打开配置对话框并导入测试项 """
         dialog = FormatDialog(self, load_mode=True)
-        dialog.Signal_Pin_Dict.connect(self.generateTree)
+        dialog.signal_pin_dict.connect(self.generate_tree)
         dialog.resize(dialog.width(), dialog.height())
         dialog.exec()
 
-    def selectAllTreeItem(self):
+    def select_all_tree_item(self):
         """ 全选 """
         it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.NotChecked)
         while it.value():
@@ -192,7 +195,7 @@ class TestNameTree(QWidget):
                 it.value().setCheckState(0, Qt.Checked)
             it.__iadd__(1)
 
-    def reverseSelectedTreeItem(self):
+    def reverse_selected_tree_item(self):
         """ 反选 """
         it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.All)
         while it.value():
@@ -203,7 +206,7 @@ class TestNameTree(QWidget):
                     it.value().setCheckState(0, Qt.Checked)
             it.__iadd__(1)
 
-    def clearSelectedTreeItem(self):
+    def clear_selected_tree_item(self):
         """ 清空 """
         it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.Checked)
         while it.value():
@@ -211,19 +214,19 @@ class TestNameTree(QWidget):
                 it.value().setCheckState(0, Qt.Unchecked)
             it.__iadd__(1)
 
-    def isAnySelected(self):
+    def is_any_selected(self):
         it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.Checked)
         while it.value():
             return True
         return False
 
-    def treeClickedHandle(self, item, column):
-        if self.isAnySelected():
-            self.Signal_Has_Checked.emit(1)
+    def tree_clicked_handle(self):
+        if self.is_any_selected():
+            self.signal_has_checked.emit(1)
         else:
-            self.Signal_Has_Checked.emit(0)
+            self.signal_has_checked.emit(0)
 
-    def getAllPin(self):
+    def get_all_pin(self):
         pin_list = list()
         it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.All)
         while it.value():
@@ -237,7 +240,7 @@ class TestNameTree(QWidget):
             it.__iadd__(1)
         return pin_list
 
-    def getCheckedPinMap(self):
+    def get_checked_pin_map(self):
         pin_map = OrderedDict()
         try:
             it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.Checked)
@@ -247,46 +250,46 @@ class TestNameTree(QWidget):
                     pinname = it.value().text(0)
                     if not pin_map.get(testname):
                         pin_map[testname] = OrderedDict()
-                    pin_map.get(testname)[pinname] = OrderedDict()
+                    pin_map.get(testname)[pinname] = list()
                 else:
                     testname = it.value().text(0)
                     if not pin_map.get(testname):
                         pin_map[testname] = OrderedDict()
                     lower_bound = it.value().text(1)
                     upper_bound = it.value().text(2)
-                    if lower_bound != None and len(lower_bound) > 0:
+                    if lower_bound is not None and len(lower_bound) > 0:
                         if util.isnumber(lower_bound):
-                            pin_map.get(testname)['__lower_bound'] = Decimal(lower_bound)
+                            pin_map.get(testname)["__lower_bound"] = Decimal(lower_bound)
                         else:
-                            raise Exception('%s下限必须为数字' % testname)
-                    if upper_bound != None and len(upper_bound) > 0:
+                            raise Exception("%s下限必须为数字" % testname)
+                    if upper_bound is not None and len(upper_bound) > 0:
                         if util.isnumber(upper_bound):
-                            pin_map.get(testname)['__upper_bound'] = Decimal(upper_bound)
+                            pin_map.get(testname)["__upper_bound"] = Decimal(upper_bound)
                         else:
-                            raise Exception('%s上限必须为数字' % testname)
+                            raise Exception("%s上限必须为数字" % testname)
                 it.__iadd__(1)
         except Exception as e:
             raise e
         return pin_map
 
-    def generateTree(self, pin_map):
+    def generate_tree(self, pin_map):
         self.pin_map = pin_map
         self.tree.clear()
         self.tree_item_count = 0
-        self.tree.addTopLevelItems([self.generateTreeByDfs(top, self.tree) for top in pin_map.items()])
+        self.tree.addTopLevelItems([self.generate_tree_by_dfs(top, self.tree) for top in pin_map.items()])
         self.tree.resizeColumnToContents(0)
 
-    def searchItemByKeyword(self, keyword=None):
+    def search_item_by_keyword(self, keyword=None):
         if not keyword:
             sender = self.sender()
             keyword = sender.text()
-        self.searchNextItemByKeyword(keyword)
+        self.search_next_item_by_keyword(keyword)
 
-    def searchPreviousItemByKeyword(self, keyword):
-        words = re.split(r'\s+', keyword.strip())
+    def search_previous_item_by_keyword(self, keyword):
+        words = re.split(r"\s+", keyword.strip())
         if not self.tree_iterator or not self.tree_iterator.value():
             self.tree_iterator = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.All)
-            for i in range(0, self.tree_item_count - 1):
+            for _ in range(0, self.tree_item_count - 1):
                 self.tree_iterator.__iadd__(1)
         while self.tree_iterator.value():
             text = self.tree_iterator.value().text(0)
@@ -298,8 +301,8 @@ class TestNameTree(QWidget):
                     return
             self.tree_iterator.__isub__(1)
 
-    def searchNextItemByKeyword(self, keyword):
-        words = re.split(r'\s+', keyword.strip())
+    def search_next_item_by_keyword(self, keyword):
+        words = re.split(r"\s+", keyword.strip())
         if not self.tree_iterator or not self.tree_iterator.value():
             self.tree_iterator = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.All)
         while self.tree_iterator.value():
@@ -312,31 +315,32 @@ class TestNameTree(QWidget):
                     return
             self.tree_iterator.__iadd__(1)
 
-    def generateTreeByDfs(self, values, parent):
-        def dfs(values, parent):
-            root = QTreeWidgetItem(parent)
+    def generate_tree_by_dfs(self, outer_values, outer_parent):
+        def dfs(inner_values, inner_parent):
+            root = QTreeWidgetItem(inner_parent)
             self.tree_item_count += 1
-            root.setText(0, values[0])
+            root.setText(0, inner_values[0])
             root.setCheckState(0, Qt.Unchecked)
-            if values[1]:
-                for child in values[1].items():
+            if inner_values[1]:
+                for child in inner_values[1].items():
                     dfs(child, root)
             if root.childCount() == 0:
                 root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate)
             else:
                 root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate | Qt.ItemIsEditable)
             return root
-        return dfs(values, parent)
+
+        return dfs(outer_values, outer_parent)
 
     @staticmethod
-    def loadTestName(filename, regex=None):
+    def load_test_name(filename, regex=None):
         pin_map = OrderedDict()
         current_regex = TEST_NAME_PIN_REGEX
         if regex:
             current_regex = regex
-        with open(filename, 'r', encoding='utf-8') as f:
+        with open(filename, "r", encoding="utf-8") as f:
             line = f.readline()
-            while line != None and len(line) > 0:
+            while not line and len(line) > 0:
                 matcher = re.match(current_regex, line)
                 if matcher:
                     groups = matcher.groups()
@@ -350,9 +354,9 @@ class TestNameTree(QWidget):
         return pin_map
 
     @staticmethod
-    def getTreeValues(tree):
-        def getTreeItemValues(item: QTreeWidgetItem, columns: list) -> OrderedDict:
-            if item == None:
+    def get_tree_values(tree):
+        def get_tree_item_values(item: QTreeWidgetItem, columns: list) -> Optional[OrderedDict]:
+            if item is None:
                 return
             value_map = OrderedDict()
             for v_idx, k in enumerate(columns):
@@ -360,39 +364,38 @@ class TestNameTree(QWidget):
                 value_map[k] = v
             return value_map
 
-        def dfs(root: QTreeWidgetItem, columns: list) -> TreeNode:
+        def dfs(root: QTreeWidgetItem, columns: list) -> Optional[TreeNode]:
             """ 深度优先搜索 """
-            if root == None:
+            if root is None:
                 return
             if root.checkState(0) == Qt.Unchecked:
                 return
             name = root.text(0)
-            values = getTreeItemValues(root, columns)
+            values = get_tree_item_values(root, columns)
             children = OrderedDict()
             for i in range(0, root.childCount()):
                 child = dfs(root.child(i), columns)
-                if child == None:
+                if child is None:
                     continue
                 for root_val_k in values:
-                    if root_val_k not in child.values.keys() or child.values[root_val_k] == '':
+                    if root_val_k not in child.values.keys() or child.values[root_val_k] == "":
                         # 子节点继承父节点的值
                         child.values[root_val_k] = values.get(root_val_k)
                 children[child.name] = child
             return TreeNode(name, values, children)
 
-        columns = [tree.headerItem().text(x) for x in range(0, tree.header().count())]
+        columns_ = [tree.headerItem().text(x) for x in range(0, tree.header().count())]
         tree_map = OrderedDict()
-        for i in range(0, tree.topLevelItemCount()):
-            top = tree.topLevelItem(i)
+        for j in range(0, tree.topLevelItemCount()):
+            top = tree.topLevelItem(j)
             if top.checkState(0) == Qt.Unchecked:
                 continue
-            root = dfs(top, columns)
-            tree_map[root.name] = root
+            root_ = dfs(top, columns_)
+            tree_map[root_.name] = root_
         return tree_map
 
 
 if __name__ == "__main__":
-    """ 主方法 """
     app = QApplication(sys.argv)
     __tree = TestNameTree()
     __tree.show()
