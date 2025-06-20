@@ -14,7 +14,7 @@ from collections import OrderedDict
 from PyQt5.QtWidgets import QApplication, QDialog, QFormLayout, QHBoxLayout, QVBoxLayout, QLineEdit, QSpinBox, \
     QPushButton, QMessageBox, QGroupBox, QFileDialog, QCheckBox
 from PyQt5.QtGui import QIcon, QPixmap
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal, QEvent, QObject
 
 import resource  # pylint: disable=unused-import
 
@@ -31,6 +31,25 @@ BEGIN_REGEX += r"\n"
 TEST_NAME_PIN_REGEX += r"\s+"
 
 
+class QLineEditEventHandler(QObject):
+    """自定义类，实现文件拖拽获得路径"""
+
+    def eventFilter(self, obj: QLineEdit, event):  # pylint: disable=invalid-name
+        """
+        处理窗体内出现的事件，如果有需要则自行添加if判断语句；
+        目前已经实现将拖到控件上文件的路径设置为控件的显示文本；
+        """
+        if event.type() == QEvent.DragEnter:
+            event.accept()
+        if event.type() == QEvent.Drop:
+            md = event.mimeData()
+            if md.hasUrls():
+                url = md.urls()[0]
+                obj.setText(url.toLocalFile())
+                return True
+        return super().eventFilter(obj, event)
+
+
 class FormatDialog(QDialog):
     """docstring for FormatDialog"""
 
@@ -39,6 +58,7 @@ class FormatDialog(QDialog):
 
     def __init__(self, parent=None, load_mode=False):
         super(FormatDialog, self).__init__(parent)
+        self.path_line_edit = QLineEdit(self)
         self.parent = parent
         self.load_mode = load_mode
         self.regex = None
@@ -61,9 +81,11 @@ class FormatDialog(QDialog):
 
     def init_ui(self):
         # QFormLayout
-        self.path_line_edit = QLineEdit(self)
+        self.path_line_edit.setAcceptDrops(True)
+        self.path_line_edit.installEventFilter(QLineEditEventHandler(self))
+        self.path_line_edit.textChanged.connect(self.load_datalog)
         path_btn = QPushButton("选择文件", self)
-        path_btn.clicked.connect(self.load_datalog)
+        path_btn.clicked.connect(self.select_datalog)
         datalog_layout = QHBoxLayout()
         datalog_layout.addWidget(self.path_line_edit)
         datalog_layout.addWidget(path_btn)
@@ -115,12 +137,14 @@ class FormatDialog(QDialog):
         # confirm_btn.clicked.connect(self.getRegex)
         # layout.addWidget(confirm_btn, 12, 0, 1, 10, Qt.AlignHCenter)
 
-    def load_datalog(self):
+    def select_datalog(self):
         filename = QFileDialog.getOpenFileName(self, "选择 DataLog 文件", filter="All Files (*.*);;Text Files (*.txt)",
                                                initialFilter="Text Files (*.txt)")[0]
         if filename is None or len(filename) == 0:
             return
         self.path_line_edit.setText(filename)
+
+    def load_datalog(self, filename):
         with open(filename, "r", encoding="utf-8") as f:
             line = f.readline()
             while line is not None and len(line) > 0:
@@ -160,7 +184,8 @@ class FormatDialog(QDialog):
         regex = TEST_NAME_PIN_REGEX % (*self.column_width,)
         return regex
 
-    def load_test_name(self, filename, regex=None):
+    @staticmethod
+    def load_test_name(filename, regex=None):
         pin_map = OrderedDict()
         with open(filename, "r", encoding="utf-8") as f:
             line = f.readline()

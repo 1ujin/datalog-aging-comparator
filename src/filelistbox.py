@@ -12,7 +12,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QStyleFactory, QListWidget, \
     QListWidgetItem, QAbstractItemView, QSpacerItem, QSizePolicy, QFileDialog, QMenu, QAction
 from PyQt5.QtGui import QIcon, QPixmap, QCursor, QTransform
-from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize
+from PyQt5.QtCore import Qt, QPoint, pyqtSignal, QSize, QObject, QEvent
 
 import resource  # pylint: disable=unused-import
 
@@ -28,6 +28,9 @@ class FileListBox(QWidget):
         super(FileListBox, self).__init__()
         self.clipboard = QApplication.clipboard()
         self.parent = parent
+        self.folder_list = QListWidget(self)
+        self.file_list = QListWidget(self)
+        self.expand_btn = QPushButton(self)
         self.dir_set = set()
         self.file_set = set()
         # self.setMinimumHeight(800)
@@ -42,7 +45,9 @@ class FileListBox(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.folder_list = QListWidget(self)
+        self.setAcceptDrops(True)
+        self.installEventFilter(CustomEventHandler(self))
+
         self.folder_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.folder_list.itemDoubleClicked.connect(lambda item: self.open(item.text()))
         self.folder_list.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -66,14 +71,12 @@ class FileListBox(QWidget):
         # folder_btn_layout.addWidget(extract_btn)
         # folder_btn_layout.addWidget(export_btn)
 
-        self.file_list = QListWidget(self)
         self.file_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.file_list.itemDoubleClicked.connect(lambda item: self.open(item.text()))
         self.file_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.file_list.customContextMenuRequested[QPoint].connect(self.list_context_menu_event)
         self.file_list.hide()
 
-        self.expand_btn = QPushButton(self)
         self.expand_btn.setToolTip("展开所有文件夹并剔除文件")
         self.expand_btn.clicked.connect(self.expand_all_file)
         # self.expand_btn.setStyleSheet("height: 70px; width: 12px;")
@@ -220,6 +223,32 @@ class FileListBox(QWidget):
             del_action.triggered.connect(self.delete_path)
             menu.addAction(del_action)
             menu.exec_(QCursor.pos())
+
+
+class CustomEventHandler(QObject):
+    """自定义类，实现文件拖拽获得路径"""
+
+    def eventFilter(self, obj: FileListBox, event):  # pylint: disable=invalid-name
+        """
+        处理窗体内出现的事件，如果有需要则自行添加if判断语句；
+        目前已经实现将拖到控件上文件的路径设置为控件的显示文本；
+        """
+        if event.type() == QEvent.DragEnter:
+            event.acceptProposedAction()
+        elif event.type() == QEvent.Drop:
+            md = event.mimeData()
+            if md.hasUrls():
+                urls = [url.toLocalFile() for url in md.urls()]
+                for url in urls:
+                    if os.path.isfile(url) and url not in obj.file_set:
+                        obj.file_set.add(url)
+                        QListWidgetItem(url, obj.folder_list)
+                    elif os.path.isdir(url) and url not in obj.dir_set:
+                        obj.dir_set.add(url)
+                        QListWidgetItem(url, obj.folder_list)
+                obj.signal_row_count.emit(obj.folder_list.count() + obj.file_list.count())
+                return True
+        return super().eventFilter(obj, event)
 
 
 if __name__ == "__main__":
