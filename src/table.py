@@ -201,6 +201,19 @@ class Table(QTableWidget):
                         if compare_testname_dict.get(chip_id) is None:
                             compare_testname_dict[chip_id] = dict()
                         compare_chip_dict = compare_testname_dict.get(chip_id)
+                        unit = 1
+                        testname_unit = testname_dict.get("__unit")
+                        if testname_unit is not None and len(testname_unit) > 0:
+                            if testname_unit.find("p") > -1:
+                                unit = 1
+                            elif testname_unit.find("n") > -1:
+                                unit = 1000
+                            elif testname_unit.find("u") > -1:
+                                unit = 1000 * 1000
+                            elif testname_unit.find("m") > -1:
+                                unit = 1000 * 1000 * 1000
+                            else:
+                                unit = 1000 * 1000 * 1000 * 1000
                         # 匹配Pin
                         pinname_dict = testname_dict.get(pinname)
                         if pinname_dict is not None:
@@ -209,15 +222,16 @@ class Table(QTableWidget):
                             compare_pin_dict = compare_chip_dict.get(pinname)
                             val = group[7].strip()
                             if val.find("p") > -1:
-                                val = Decimal(val.split(" ")[0]) / 1000 / 1000
-                            elif val.find("n") > -1:
-                                val = Decimal(val.split(" ")[0]) / 1000
-                            elif val.find("u") > -1:
                                 val = Decimal(val.split(" ")[0])
-                            elif val.find("m") > -1:
+                            elif val.find("n") > -1:
                                 val = Decimal(val.split(" ")[0]) * 1000
-                            else:
+                            elif val.find("u") > -1:
                                 val = Decimal(val.split(" ")[0]) * 1000 * 1000
+                            elif val.find("m") > -1:
+                                val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000
+                            else:
+                                val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000 * 1000
+                            val /= unit
                             compare_pin_dict[MIN_SIZE] = val
                             pinname_dict.append(MIN_SIZE)
                             total += 1
@@ -254,6 +268,19 @@ class Table(QTableWidget):
                             continue
                         compare_testname_dict = compare_dict.get(testname)
                         if testname_dict is not None and compare_testname_dict is not None:
+                            unit = 1
+                            testname_unit = testname_dict.get("__unit")
+                            if testname_unit is not None and len(testname_unit) > 0:
+                                if testname_unit.find("p") > -1:
+                                    unit = 1
+                                elif testname_unit.find("n") > -1:
+                                    unit = 1000
+                                elif testname_unit.find("u") > -1:
+                                    unit = 1000 * 1000
+                                elif testname_unit.find("m") > -1:
+                                    unit = 1000 * 1000 * 1000
+                                else:
+                                    unit = 1000 * 1000 * 1000 * 1000
                             if compare_testname_dict.get(chip_id) is None:
                                 compare_testname_dict[chip_id] = dict()
                             compare_chip_dict = compare_testname_dict.get(chip_id)
@@ -265,15 +292,16 @@ class Table(QTableWidget):
                                 compare_pin_dict = compare_chip_dict.get(pinname)
                                 val = group[7].strip()
                                 if val.find("p") > -1:
-                                    val = Decimal(val.split(" ")[0]) / 1000 / 1000
-                                elif val.find("n") > -1:
-                                    val = Decimal(val.split(" ")[0]) / 1000
-                                elif val.find("u") > -1:
                                     val = Decimal(val.split(" ")[0])
-                                elif val.find("m") > -1:
+                                elif val.find("n") > -1:
                                     val = Decimal(val.split(" ")[0]) * 1000
-                                else:
+                                elif val.find("u") > -1:
                                     val = Decimal(val.split(" ")[0]) * 1000 * 1000
+                                elif val.find("m") > -1:
+                                    val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000
+                                else:
+                                    val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000 * 1000
+                                val /= unit
                                 compare_pin_dict[after_temperature] = val
                                 pinname_dict.append(after_temperature)
                         line = f.readline()
@@ -355,11 +383,12 @@ class Table(QTableWidget):
                 testname, pin_dict = testname_item
                 lower_bound = pin_dict.get("__lower_bound")
                 upper_bound = pin_dict.get("__upper_bound")
+                unit = pin_dict.get("__unit")
 
                 # 表头
                 temp_set = set()
                 for pin_item in pin_dict.items():
-                    if pin_item[0] == "__upper_bound" or pin_item[0] == "__lower_bound":
+                    if pin_item[0] == "__upper_bound" or pin_item[0] == "__lower_bound" or pin_item[0] == "__unit":
                         continue
                     temp_set.update(pin_item[1])
                 temp_list = list(temp_set)
@@ -375,7 +404,8 @@ class Table(QTableWidget):
                     upper_bound = ""
                 if lower_bound != "" or upper_bound != "":
                     bound = " [%s,%s]" % (str(lower_bound), str(upper_bound))
-                self.setItem(0, col + current_w, self.get_table_item(testname + bound))
+                unit = " (" + unit + ")"
+                self.setItem(0, col + current_w, self.get_table_item(testname + bound + unit))
                 current_w += 2
                 self.setItem(1, col + current_w, self.get_table_item("老炼前"))
                 # self.setItem(2, col + current_w, self.getTableItem("常温"))

@@ -14,7 +14,8 @@ from decimal import Decimal
 from typing import Optional
 
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, \
-    QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView
+    QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView, \
+    QComboBox
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -154,7 +155,7 @@ class TestNameTree(QWidget):
         collapse_btn.clicked.connect(self.tree.collapseAll)
         self.tree.itemClicked.connect(self.tree_clicked_handle)
         self.tree.header().setSectionsMovable(False)
-        self.tree.setHeaderLabels(["Test Name  〉Pin", "下限（uA/uV）", "上限（uA/uV）"])
+        self.tree.setHeaderLabels(["Test Name  〉Pin", "下限", "上限", "单位"])
         # self.tree.setHeaderHidden(True)
         # 展开全部
         # self.tree.expandAll()
@@ -267,6 +268,8 @@ class TestNameTree(QWidget):
                             pin_map.get(testname)["__upper_bound"] = Decimal(upper_bound)
                         else:
                             raise Exception("%s上限必须为数字" % testname)
+                    unit = self.tree.itemWidget(it.value(), 3).currentText()
+                    pin_map.get(testname)["__unit"] = unit
                 it.__iadd__(1)
         except Exception as e:
             raise e
@@ -277,7 +280,9 @@ class TestNameTree(QWidget):
         self.tree.clear()
         self.tree_item_count = 0
         self.tree.addTopLevelItems([self.generate_tree_by_dfs(top, self.tree) for top in pin_map.items()])
-        self.tree.resizeColumnToContents(0)
+        self.tree.setColumnWidth(1, 100)
+        self.tree.setColumnWidth(2, 100)
+        self.tree.resizeColumnToContents(3)
 
     def search_item_by_keyword(self, keyword=None):
         if not keyword:
@@ -327,6 +332,10 @@ class TestNameTree(QWidget):
             if root.childCount() == 0:
                 root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate)
             else:
+                cb = QComboBox(self.tree)
+                cb.setStyleSheet("QComboBox { max-width: 75px; }")
+                cb.addItems(["V/A", "mV/mA", "uV/uA", "nV/nA", "pV/pA"])
+                self.tree.setItemWidget(root, 3, cb)
                 root.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable | Qt.ItemIsAutoTristate | Qt.ItemIsEditable)
             return root
 

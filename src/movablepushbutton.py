@@ -16,12 +16,13 @@ class MovablePushButton(QPushButton):
     可移动按钮组件
     """
 
+    _mouse_press_pos = None
+    _mouse_move_pos = None
+
     def mousePressEvent(self, event):  # pylint: disable=invalid-name
-        self.__mouse_press_pos = None
-        self.__mouse_move_pos = None
         if event.button() == Qt.LeftButton:
-            self.__mouse_press_pos = event.globalPos()
-            self.__mouse_move_pos = event.globalPos()
+            self._mouse_press_pos = event.globalPos()
+            self._mouse_move_pos = event.globalPos()
 
         super(MovablePushButton, self).mousePressEvent(event)
 
@@ -30,7 +31,7 @@ class MovablePushButton(QPushButton):
             # adjust offset from clicked point to origin of widget
             curr_pos = self.mapToGlobal(self.pos())
             global_pos = event.globalPos()
-            diff = global_pos - self.__mouse_move_pos
+            diff = global_pos - self._mouse_move_pos
             if diff.manhattanLength() < 20:
                 event.ignore()
                 return
@@ -50,13 +51,13 @@ class MovablePushButton(QPushButton):
                     new_pos.setY(bottom - self.height())
 
                 self.move(new_pos)
-            self.__mouse_move_pos = global_pos
+            self._mouse_move_pos = global_pos
 
         super(MovablePushButton, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):  # pylint: disable=invalid-name
-        if self.__mouse_press_pos is not None:
-            moved = event.globalPos() - self.__mouse_press_pos
+        if self._mouse_press_pos is not None:
+            moved = event.globalPos() - self._mouse_press_pos
             if moved.manhattanLength() > 3:
                 event.ignore()
                 self.setDown(False)
