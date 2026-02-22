@@ -13,7 +13,6 @@ from decimal import Decimal
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, \
     QTableWidget
 
-import resource  # pylint: disable=unused-import
 import util
 from formatdialog import FormatDialog
 

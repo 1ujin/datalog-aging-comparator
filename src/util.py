@@ -145,10 +145,10 @@ def isnumber(text):
         return False
     if text[0] == "-" or text[0] == "+":
         text = text[1:]
-    vals = text.split(".")
-    if len(vals) > 2:
+    values = text.split(".")
+    if len(values) > 2:
         return False
-    for val in vals:
+    for val in values:
         if not val.isdigit():
             return False
     return True

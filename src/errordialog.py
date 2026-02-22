@@ -35,9 +35,7 @@ class ErrorDialog(QDialog):
             QLabel { min-width: 70px;  font-family: \"微软雅黑\"; font-size: 18px; } \
             QPushButton { font-family: \"微软雅黑\"; max-width: 50px; } \
             QListWidget { font-family: \"微软雅黑\"; font-size: 18px; }")
-        self.init_ui()
 
-    def init_ui(self):
         self.id_lbl = QLabel("文件名错误", self)
         self.id_error_list = QListWidget(self)
         self.id_error_list.setSelectionMode(QAbstractItemView.ContiguousSelection)
@@ -98,7 +96,8 @@ class ErrorDialog(QDialog):
             self.temperature_lbl.hide()
             self.temperature_error_list.hide()
 
-    def open_path(self, path):
+    @staticmethod
+    def open_path(path):
         if os.path.exists(path):
             if sys.platform == "win32":
                 os.startfile(path)
@@ -106,25 +105,20 @@ class ErrorDialog(QDialog):
                 os.system("xdg-open " + path)
 
     def list_context_menu_event(self, pos):
-        sender: QListWidget = self.sender()
+        sender = self.sender()
+        if not isinstance(sender, QListWidget):
+            return
         hit_index = sender.indexAt(pos).row()
         if hit_index > -1:
             path = sender.currentItem().text()
             menu = QMenu(sender)
             open_file_action = QAction("打开", menu)
-            open_file_action.triggered.connect(lambda: self.open(path))
+            open_file_action.triggered.connect(lambda: self.open_path(path))
             menu.addAction(open_file_action)
             open_folder_action = QAction("打开所在文件夹", menu)
-            open_folder_action.triggered.connect(lambda: self.open(os.path.split(path)[0]))
+            open_folder_action.triggered.connect(lambda: self.open_path(os.path.split(path)[0]))
             menu.addAction(open_folder_action)
             copy_action = QAction("复制路径", menu)
             copy_action.triggered.connect(lambda: self.clipboard.setText(path))
             menu.addAction(copy_action)
             menu.exec_(QCursor.pos())
-
-    def open(self, path):
-        if os.path.exists(path):
-            if sys.platform == "win32":
-                os.startfile(path)
-            elif sys.platform == "linux":
-                os.system("xdg-open " + path)

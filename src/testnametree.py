@@ -13,9 +13,9 @@ from collections import OrderedDict
 from decimal import Decimal
 from typing import Optional
 
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, \
-    QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, QAbstractItemView, \
-    QComboBox
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QTreeWidget, \
+    QTreeWidgetItem, QStyledItemDelegate, QTreeWidgetItemIterator, QFrame, QSpacerItem, QSizePolicy, QLineEdit, \
+    QAbstractItemView, QComboBox
 from PyQt5.QtGui import QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 
@@ -93,10 +93,11 @@ class TestNameTree(QWidget):
             QScrollArea { border: none } \
             QTreeView { height: 28px; font-family: \"微软雅黑\"; font-size: 18px; } \
             QTreeView::item { border: solid lightgray; border-width: 1px 1px 0px 0px; } \
-            QTreeView::item:closed:!has-siblings:has-children { border: solid lightgray; border-width: 1px 1px 1px 0px; } \
+            QTreeView::item:closed:!has-siblings:has-children {border: solid lightgray;border-width: 1px 1px 1px 0px;} \
             QTreeView::branch:has-siblings:!adjoins-item { border-image: url(\":/images/branch-vline.png\") 0; } \
             QTreeView::branch:has-siblings:adjoins-item { border-image: url(\":/images/branch-more.png\") 0; } \
-            QTreeView::branch:!has-children:!has-siblings:adjoins-item { border-image: url(\":/images/branch-end.png\") 0; } \
+            QTreeView::branch:!has-children:!has-siblings:adjoins-item { \
+                border-image: url(\":/images/branch-end.png\") 0; } \
             QTreeView::branch:closed:has-children { border-image: none; image: url(\":/images/branch-closed.png\"); } \
             QTreeView::branch:open:has-children { border-image: none; image: url(\":/images/branch-opened.png\"); }")
         self.init_ui()
@@ -247,29 +248,29 @@ class TestNameTree(QWidget):
             it = QTreeWidgetItemIterator(self.tree, QTreeWidgetItemIterator.Checked)
             while it.value():
                 if it.value().childCount() == 0:
-                    testname = it.value().parent().text(0)
-                    pinname = it.value().text(0)
-                    if not pin_map.get(testname):
-                        pin_map[testname] = OrderedDict()
-                    pin_map.get(testname)[pinname] = list()
+                    test_name = it.value().parent().text(0)
+                    pin_name = it.value().text(0)
+                    if not pin_map.get(test_name):
+                        pin_map[test_name] = OrderedDict()
+                    pin_map.get(test_name)[pin_name] = list()
                 else:
-                    testname = it.value().text(0)
-                    if not pin_map.get(testname):
-                        pin_map[testname] = OrderedDict()
+                    test_name = it.value().text(0)
+                    if not pin_map.get(test_name):
+                        pin_map[test_name] = OrderedDict()
                     lower_bound = it.value().text(1)
                     upper_bound = it.value().text(2)
                     if lower_bound is not None and len(lower_bound) > 0:
                         if util.isnumber(lower_bound):
-                            pin_map.get(testname)["__lower_bound"] = Decimal(lower_bound)
+                            pin_map.get(test_name)["__lower_bound"] = Decimal(lower_bound)
                         else:
-                            raise Exception("%s下限必须为数字" % testname)
+                            raise Exception("%s下限必须为数字" % test_name)
                     if upper_bound is not None and len(upper_bound) > 0:
                         if util.isnumber(upper_bound):
-                            pin_map.get(testname)["__upper_bound"] = Decimal(upper_bound)
+                            pin_map.get(test_name)["__upper_bound"] = Decimal(upper_bound)
                         else:
-                            raise Exception("%s上限必须为数字" % testname)
+                            raise Exception("%s上限必须为数字" % test_name)
                     unit = self.tree.itemWidget(it.value(), 3).currentText()
-                    pin_map.get(testname)["__unit"] = unit
+                    pin_map.get(test_name)["__unit"] = unit
                 it.__iadd__(1)
         except Exception as e:
             raise e
@@ -287,7 +288,8 @@ class TestNameTree(QWidget):
     def search_item_by_keyword(self, keyword=None):
         if not keyword:
             sender = self.sender()
-            keyword = sender.text()
+            if isinstance(sender, QLineEdit):
+                keyword = sender.text()
         self.search_next_item_by_keyword(keyword)
 
     def search_previous_item_by_keyword(self, keyword):
@@ -354,11 +356,11 @@ class TestNameTree(QWidget):
                 if matcher:
                     groups = matcher.groups()
                     if groups[0].strip().isdigit():
-                        testname = groups[3].strip()
-                        pin = groups[4].strip()
-                        if not pin_map.get(testname):
-                            pin_map[testname] = OrderedDict()
-                        pin_map.get(testname)[pin] = OrderedDict()
+                        test_name = groups[3].strip()
+                        pin_name = groups[4].strip()
+                        if not pin_map.get(test_name):
+                            pin_map[test_name] = OrderedDict()
+                        pin_map.get(test_name)[pin_name] = OrderedDict()
                 line = f.readline()
         return pin_map
 

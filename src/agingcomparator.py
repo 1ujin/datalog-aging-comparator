@@ -55,36 +55,20 @@ class AgingComparator(QMainWindow):
             QListWidget { font-family: \"微软雅黑\"; font-size: 18px; } \
             QCheckBox { height: 28px; font-family: \"微软雅黑\"; margin-left: 10px; } \
             QPlainTextEdit { font-family: \"微软雅黑\"; font-size: 18px; }")
-        self.init_ui()
-
-    def showEvent(self, event):  # pylint: disable=unused-argument,invalid-name
+        self.taskbar_button = None
         self.taskbar_progress = None
-        if sys.platform == "win32":
-            self.taskbar_button = QWinTaskbarButton(self)
-            self.taskbar_progress = self.taskbar_button.progress()
-            self.taskbar_progress.show()
-            self.taskbar_button.setWindow(self.windowHandle())
-
-    def resizeEvent(self, event):  # pylint: disable=invalid-name
-        if self.compare_btn.isVisible():
-            self.compare_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
-        if self.excel_btn.isVisible():
-            self.excel_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
-        super(AgingComparator, self).resizeEvent(event)
-
-    def init_ui(self):
         splitter = QSplitter(self)
         splitter.setChildrenCollapsible(False)
         splitter.setStyleSheet("QSplitter { margin: 11px }")
 
         self.tab = QTabWidget(splitter)
-        self.testname_tree = TestNameTree(self.tab)
-        self.testname_tree.signal_has_checked.connect(self.switch_compare_button)
+        self.test_name_tree = TestNameTree(self.tab)
+        self.test_name_tree.signal_has_checked.connect(self.switch_compare_button)
         self.tab.setStyleSheet("QTabWidget:pane { padding: 0px; }")
         self.tab.setTabPosition(QTabWidget.West)
-        self.tab.addTab(self.testname_tree, "导入测试项")
+        self.tab.addTab(self.test_name_tree, "导入测试项")
         # self.text_edit = QPlainTextEdit(self)
-        # self.text_edit.textChanged.connect(self.textChangedHandle)
+        # self.text_edit.textChanged.connect(self.text_changed_handle)
         # self.text_edit.setPlaceholderText('请输入要对比的测试项名称，以逗号隔开，例：\n测试项A Pin1，测试项A Pin2，测试项B Pin3')
         # self.text_edit.setFont(QFont('微软雅黑', 10))
         # self.tab.addTab(self.text_edit, '手动填写测试项')
@@ -104,18 +88,18 @@ class AgingComparator(QMainWindow):
         self.compare_btn.setIcon(QIcon(":/images/export-excel2.png"))
         self.compare_btn.setIcon(QIcon(":/images/compare.png"))
         self.compare_btn.setStyleSheet("\
-            QPushButton { \
-                border-radius: 35px; \
-                width: 70px; \
-                height: 70px; \
-                background-color: LimeGreen; \
-            } \
-            QPushButton:enabled:hover { \
-                background-color: lightgreen; \
-            } \
-            QPushButton:enabled:pressed { \
-                background-color: green; \
-            }")
+                    QPushButton { \
+                        border-radius: 35px; \
+                        width: 70px; \
+                        height: 70px; \
+                        background-color: LimeGreen; \
+                    } \
+                    QPushButton:enabled:hover { \
+                        background-color: lightgreen; \
+                    } \
+                    QPushButton:enabled:pressed { \
+                        background-color: green; \
+                    }")
         self.compare_btn.clicked.connect(self.compare_datalog)
         self.compare_btn.hide()
 
@@ -124,18 +108,18 @@ class AgingComparator(QMainWindow):
         self.excel_btn.setIconSize(QSize(32, 32))
         self.excel_btn.setIcon(QIcon(":/images/export-excel2.png"))
         self.excel_btn.setStyleSheet("\
-            QPushButton { \
-                border-radius: 35px; \
-                width: 70px; \
-                height: 70px; \
-                background-color: LimeGreen; \
-            } \
-            QPushButton:enabled:hover { \
-                background-color: lightgreen; \
-            } \
-            QPushButton:enabled:pressed { \
-                background-color: green; \
-            }")
+                    QPushButton { \
+                        border-radius: 35px; \
+                        width: 70px; \
+                        height: 70px; \
+                        background-color: LimeGreen; \
+                    } \
+                    QPushButton:enabled:hover { \
+                        background-color: lightgreen; \
+                    } \
+                    QPushButton:enabled:pressed { \
+                        background-color: green; \
+                    }")
         self.excel_btn.clicked.connect(self.export_and_open_excel)
         self.excel_btn.hide()
 
@@ -181,6 +165,22 @@ class AgingComparator(QMainWindow):
         splitter.setStretchFactor(1, 1)
 
         self.setCentralWidget(splitter)
+        self.animation_group = QSequentialAnimationGroup(self)
+
+    def showEvent(self, event):  # pylint: disable=unused-argument,invalid-name
+        self.taskbar_progress = None
+        if sys.platform == "win32":
+            self.taskbar_button = QWinTaskbarButton(self)
+            self.taskbar_progress = self.taskbar_button.progress()
+            self.taskbar_progress.show()
+            self.taskbar_button.setWindow(self.windowHandle())
+
+    def resizeEvent(self, event):  # pylint: disable=invalid-name
+        if self.compare_btn.isVisible():
+            self.compare_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
+        if self.excel_btn.isVisible():
+            self.excel_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
+        super(AgingComparator, self).resizeEvent(event)
 
     def switch_compare_button(self, count=None):
         if self.table_layout_widget.isVisible():
@@ -192,7 +192,6 @@ class AgingComparator(QMainWindow):
                 self.geometry_animation.setEndValue(
                     QRect(self.compare_btn.geometry().x(), self.geometry().height() + 10, 70, 70))
 
-                self.animation_group = QSequentialAnimationGroup(self)
                 self.animation_group.addAnimation(self.geometry_animation)
                 self.animation_group.addAnimation(self.visible_animation)
                 self.animation_group.start()
@@ -212,7 +211,7 @@ class AgingComparator(QMainWindow):
             return False
         if self.file_list_after_aging.folder_list.count() + self.file_list_after_aging.file_list.count() == 0:
             return False
-        if self.tab.currentIndex() == 0 and not self.testname_tree.is_any_selected():
+        if self.tab.currentIndex() == 0 and not self.test_name_tree.is_any_selected():
             return False
         if self.tab.currentIndex() == 1 and len(self.test_pin_table.get_pin_map()) == 0:
             return False
@@ -237,7 +236,6 @@ class AgingComparator(QMainWindow):
                 return
 
             if not has_result or compare_reply == 0:
-                pin_map = None
                 if self.tab.currentIndex() == 0:
                     pin_map = self.get_checked_pin_map()
                 elif self.tab.currentIndex() == 1:
@@ -271,8 +269,8 @@ class AgingComparator(QMainWindow):
             self.compare_btn.setGeometry(QRect(self.geometry().width() - 150, self.geometry().height() - 150, 70, 70))
             self.compare_btn.show()
 
-    # def textChangedHandle(self):
-    #     self.switchCompareButtion(len(self.sender().toPlainText()))
+    # def text_changed_handle(self):
+    #     self.switch_compare_button(len(self.sender().toPlainText()))
 
     def test_pin_table_changed_handle(self):
         try:
@@ -282,18 +280,18 @@ class AgingComparator(QMainWindow):
             QMessageBox.warning(self, "提示", "失败\n" + str(e) + "\n" + str(tb)[19:-1] + "\n" + tb.line)
 
     def get_pin_map(self):
-        if self.testname_tree is None:
+        if self.test_name_tree is None:
             return None
-        return self.testname_tree.pin_map
+        return self.test_name_tree.pin_map
 
     def get_checked_pin_map(self):
-        if self.testname_tree is None:
+        if self.test_name_tree is None:
             return None
-        return self.testname_tree.get_checked_pin_map()
+        return self.test_name_tree.get_checked_pin_map()
 
     def get_regex(self):
         if self.tab.currentIndex() == 0:
-            return self.testname_tree.regex
+            return self.test_name_tree.regex
         elif self.tab.currentIndex() == 1:
             return self.test_pin_table.regex
         else:
@@ -301,7 +299,7 @@ class AgingComparator(QMainWindow):
 
     def get_begin_regex(self):
         if self.tab.currentIndex() == 0:
-            return self.testname_tree.begin_regex
+            return self.test_name_tree.begin_regex
         elif self.tab.currentIndex() == 1:
             return self.test_pin_table.begin_regex
         else:

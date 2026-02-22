@@ -205,7 +205,9 @@ class FileListBox(QWidget):
                 os.system("xdg-open " + path)
 
     def list_context_menu_event(self, pos):
-        sender: QListWidget = self.sender()
+        sender = self.sender()
+        if not isinstance(sender, QListWidget):
+            return
         hit_index = sender.indexAt(pos).row()
         if hit_index > -1:
             path = sender.currentItem().text()
