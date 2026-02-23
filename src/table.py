@@ -34,6 +34,75 @@ class Table(QTableWidget):
         self.progress = None
         self.taskbar_progress = None
 
+    @staticmethod
+    def extract_j750(temperature, path, compare_chip_dict, pin_map, regex, begin_regex):
+        # 读取文件
+        with open(path, "r", encoding="utf-8") as f:
+            line = f.readline()
+            while line is not None and len(line) > 0:
+                if re.match(begin_regex, line):
+                    break
+                line = f.readline()
+            line = f.readline()
+            while line is not None and len(line) > 0:
+                matcher = re.match(regex, line)
+                if not matcher:
+                    line = f.readline()
+                    continue
+                group = matcher.groups()
+                test_name = group[3].strip()
+                pin_name = group[4].strip()
+                # 匹配测试项
+                test_dict = pin_map.get(test_name)
+                if test_dict is None:
+                    # 该测试项未被选中
+                    line = f.readline()
+                    continue
+
+                compare_test_dict = compare_chip_dict.get(test_name)
+                if compare_test_dict is None:
+                    compare_test_dict = dict()
+                    compare_chip_dict[test_name] = compare_test_dict
+
+                if test_dict is not None:
+                    unit = 1
+                    test_unit = test_dict.get("__unit")
+                    if test_unit is not None and len(test_unit) > 0:
+                        if test_unit.find("p") > -1:
+                            unit = 1
+                        elif test_unit.find("n") > -1:
+                            unit = 1000
+                        elif test_unit.find("u") > -1:
+                            unit = 1000 * 1000
+                        elif test_unit.find("m") > -1:
+                            unit = 1000 * 1000 * 1000
+                        else:
+                            unit = 1000 * 1000 * 1000 * 1000
+
+                    # 匹配Pin
+                    pin_dict = test_dict.get(pin_name)
+                    if pin_dict is not None:
+                        compare_pin_dict = compare_test_dict.get(pin_name)
+                        if compare_pin_dict is None:
+                            compare_pin_dict = OrderedDict()
+                            compare_test_dict[pin_name] = compare_pin_dict
+
+                        val = group[7].strip()
+                        if val.find("p") > -1:
+                            val = Decimal(val.split(" ")[0])
+                        elif val.find("n") > -1:
+                            val = Decimal(val.split(" ")[0]) * 1000
+                        elif val.find("u") > -1:
+                            val = Decimal(val.split(" ")[0]) * 1000 * 1000
+                        elif val.find("m") > -1:
+                            val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000
+                        else:
+                            val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000 * 1000
+                        val /= unit
+                        compare_pin_dict[temperature] = val
+                        pin_dict.append(temperature)
+                line = f.readline()
+
     def extract_data_to_dict(self, before_list, after_list, pin_map, regex, begin_regex):
         # 解析文件名并分类
         path_dict = OrderedDict()
@@ -138,73 +207,8 @@ class Table(QTableWidget):
             # 老炼前
             before_path = path_item[1].get("before_aging")
             if before_path:
-                # 读取文件
-                with open(before_path[0], "r", encoding="utf-8") as f:
-                    line = f.readline()
-                    while line is not None and len(line) > 0:
-                        if re.match(begin_regex, line):
-                            break
-                        line = f.readline()
-                    line = f.readline()
-                    while line is not None and len(line) > 0:
-                        matcher = re.match(regex, line)
-                        if not matcher:
-                            line = f.readline()
-                            continue
-                        group = matcher.groups()
-                        test_name = group[3].strip()
-                        pin_name = group[4].strip()
-                        # 匹配测试项
-                        test_dict = pin_map.get(test_name)
-                        if test_dict is None:
-                            # 该测试项未被选中
-                            line = f.readline()
-                            continue
-
-                        compare_test_dict = compare_chip_dict.get(test_name)
-                        if compare_test_dict is None:
-                            compare_test_dict = dict()
-                            compare_chip_dict[test_name] = compare_test_dict
-
-                        if test_dict is not None:
-                            unit = 1
-                            test_unit = test_dict.get("__unit")
-                            if test_unit is not None and len(test_unit) > 0:
-                                if test_unit.find("p") > -1:
-                                    unit = 1
-                                elif test_unit.find("n") > -1:
-                                    unit = 1000
-                                elif test_unit.find("u") > -1:
-                                    unit = 1000 * 1000
-                                elif test_unit.find("m") > -1:
-                                    unit = 1000 * 1000 * 1000
-                                else:
-                                    unit = 1000 * 1000 * 1000 * 1000
-
-                            # 匹配Pin
-                            pin_dict = test_dict.get(pin_name)
-                            if pin_dict is not None:
-                                compare_pin_dict = compare_test_dict.get(pin_name)
-                                if compare_pin_dict is None:
-                                    compare_pin_dict = OrderedDict()
-                                    compare_test_dict[pin_name] = compare_pin_dict
-
-                                val = group[7].strip()
-                                if val.find("p") > -1:
-                                    val = Decimal(val.split(" ")[0])
-                                elif val.find("n") > -1:
-                                    val = Decimal(val.split(" ")[0]) * 1000
-                                elif val.find("u") > -1:
-                                    val = Decimal(val.split(" ")[0]) * 1000 * 1000
-                                elif val.find("m") > -1:
-                                    val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000
-                                else:
-                                    val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000 * 1000
-                                val /= unit
-                                compare_pin_dict[MIN_SIZE] = val
-                                pin_dict.append(MIN_SIZE)
-                                total += 1
-                        line = f.readline()
+                self.extract_j750(MIN_SIZE, before_path[0],
+                                  compare_chip_dict, pin_map, regex, begin_regex)
 
             # 老炼后
             after_item = path_item[1].get("after_aging")
@@ -212,72 +216,8 @@ class Table(QTableWidget):
                 for temperature_item in after_item.items():
                     # 循环温度
                     after_temperature, after_temperature_path = temperature_item
-                    # 读取文件
-                    with open(after_temperature_path[0], "r", encoding="utf-8") as f:
-                        line = f.readline()
-                        while line is not None and len(line) > 0:
-                            if re.match(begin_regex, line):
-                                break
-                            line = f.readline()
-                        line = f.readline()
-                        while line is not None and len(line) > 0:
-                            matcher = re.match(regex, line)
-                            if not matcher:
-                                line = f.readline()
-                                continue
-                            group = matcher.groups()
-                            test_name = group[3].strip()
-                            pin_name = group[4].strip()
-                            # 匹配测试项
-                            test_dict = pin_map.get(test_name)
-                            if test_dict is None:
-                                # 该测试项未被选中
-                                line = f.readline()
-                                continue
-
-                            compare_test_dict = compare_chip_dict.get(test_name)
-                            if compare_test_dict is None:
-                                compare_test_dict = dict()
-                                compare_chip_dict[test_name] = compare_test_dict
-
-                            if test_dict is not None:
-                                unit = 1
-                                test_unit = test_dict.get("__unit")
-                                if test_unit is not None and len(test_unit) > 0:
-                                    if test_unit.find("p") > -1:
-                                        unit = 1
-                                    elif test_unit.find("n") > -1:
-                                        unit = 1000
-                                    elif test_unit.find("u") > -1:
-                                        unit = 1000 * 1000
-                                    elif test_unit.find("m") > -1:
-                                        unit = 1000 * 1000 * 1000
-                                    else:
-                                        unit = 1000 * 1000 * 1000 * 1000
-
-                                # 匹配Pin
-                                pin_dict = test_dict.get(pin_name)
-                                if pin_dict is not None:
-                                    compare_pin_dict = compare_test_dict.get(pin_name)
-                                    if compare_pin_dict is None:
-                                        compare_pin_dict = OrderedDict()
-                                        compare_test_dict[pin_name] = compare_pin_dict
-
-                                    val = group[7].strip()
-                                    if val.find("p") > -1:
-                                        val = Decimal(val.split(" ")[0])
-                                    elif val.find("n") > -1:
-                                        val = Decimal(val.split(" ")[0]) * 1000
-                                    elif val.find("u") > -1:
-                                        val = Decimal(val.split(" ")[0]) * 1000 * 1000
-                                    elif val.find("m") > -1:
-                                        val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000
-                                    else:
-                                        val = Decimal(val.split(" ")[0]) * 1000 * 1000 * 1000 * 1000
-                                    val /= unit
-                                    compare_pin_dict[after_temperature] = val
-                                    pin_dict.append(after_temperature)
-                            line = f.readline()
+                    self.extract_j750(after_temperature, after_temperature_path[0],
+                                      compare_chip_dict, pin_map, regex, begin_regex)
 
         if self.progress:
             self.progress.setLabelText("正在填充表格")
