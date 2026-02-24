@@ -36,6 +36,7 @@ class Table(QTableWidget):
 
     @staticmethod
     def extract_j750(temperature, path, compare_chip_dict, pin_map, regex, begin_regex):
+        total = 0
         # 读取文件
         with open(path, "r", encoding="utf-8") as f:
             line = f.readline()
@@ -101,7 +102,9 @@ class Table(QTableWidget):
                         val /= unit
                         compare_pin_dict[temperature] = val
                         pin_dict.append(temperature)
+                        total += 1
                 line = f.readline()
+        return total
 
     def extract_data_to_dict(self, before_list, after_list, pin_map, regex, begin_regex):
         # 解析文件名并分类
@@ -207,8 +210,8 @@ class Table(QTableWidget):
             # 老炼前
             before_path = path_item[1].get("before_aging")
             if before_path:
-                self.extract_j750(MIN_SIZE, before_path[0],
-                                  compare_chip_dict, pin_map, regex, begin_regex)
+                total = self.extract_j750(MIN_SIZE, before_path[0],
+                                          compare_chip_dict, pin_map, regex, begin_regex)
 
             # 老炼后
             after_item = path_item[1].get("after_aging")
